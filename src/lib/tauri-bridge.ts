@@ -186,6 +186,12 @@ export const bridge = {
   openWithDefaultApp: (path: string) =>
     invoke<void>('open_with_default_app', { path }),
 
+  shareFile: (path: string) =>
+    invoke<void>('share_file', { path }),
+
+  shareToWechat: (path: string) =>
+    invoke<void>('share_to_wechat', { path }),
+
   readFileTree: (path: string, depth?: number) =>
     invoke<FileNode[]>('read_file_tree', { path, depth }),
 

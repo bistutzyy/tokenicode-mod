@@ -4,6 +4,7 @@ import { FileNode } from '../../lib/tauri-bridge';
 import { useFileStore, FileChangeKind } from '../../stores/fileStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { bridge } from '../../lib/tauri-bridge';
+import { isMac } from '../../lib/platform';
 import { useT } from '../../lib/i18n';
 import { startTreeDrag, moveTreeDrag, endTreeDrag } from '../../lib/drag-state';
 import { useChatStore } from '../../stores/chatStore';
@@ -142,6 +143,18 @@ function ContextMenu({ menu, onClose, callbacks }: {
       icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 9v4H4V5h4" /><path d="M8 8l6-6M10 2h4v4" /></svg>,
       action: () => { bridge.openWithDefaultApp(menu.path); onClose(); },
     },
+    ...(isMac() ? [
+      {
+        label: t('files.share'),
+        icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 2v8" /><path d="M5 5l3-3 3 3" /><path d="M3 9v4h10V9" /></svg>,
+        action: () => { bridge.shareFile(menu.path); onClose(); },
+      },
+      {
+        label: t('files.shareToWechat'),
+        icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6.5 4C4 4 2 5.8 2 8c0 1.2.6 2.2 1.6 2.9L3.2 13l2-1.2c.4.1.8.2 1.3.2 2.5 0 4.5-1.8 4.5-4S9 4 6.5 4z" /><path d="M10 7.5c-1.8 0-3.3 1.3-3.3 2.9 0 1.6 1.5 2.9 3.3 2.9.3 0 .7-.1 1-.1L12.5 14l-.3-1.5c.7-.5 1.1-1.3 1.1-2.1 0-1.6-1.5-2.9-3.3-2.9z" /></svg>,
+        action: () => { bridge.shareToWechat(menu.path); onClose(); },
+      },
+    ] : []),
     {
       label: t('files.openVscodeShort'),
       icon: <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 3l8 5-8 5V3z" /></svg>,
