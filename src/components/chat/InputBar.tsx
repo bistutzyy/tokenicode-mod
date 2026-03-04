@@ -160,6 +160,24 @@ export function InputBar() {
     setInput(text);
     textareaRef.current?.setText(text);
   }, [setInput]);
+
+  // Restore input text from store when session switches (restoreFromCache → inputDraft change)
+  const prevInputDraftRef = useRef(inputDraft);
+  useEffect(() => {
+    if (prevInputDraftRef.current !== inputDraft) {
+      // Never call setText during IME composition — it destroys the composing state
+      if (textareaRef.current?.isComposing()) {
+        prevInputDraftRef.current = inputDraft;
+        return;
+      }
+      // Only sync editor if its content actually differs (avoid cursor reset on user typing)
+      const current = textareaRef.current?.getText() ?? '';
+      if (current !== inputDraft) {
+        textareaRef.current?.setText(inputDraft);
+      }
+    }
+    prevInputDraftRef.current = inputDraft;
+  }, [inputDraft]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionStatus = useChatStore((s) => s.sessionStatus);
   const activityPhase = useChatStore((s) => s.activityStatus.phase);

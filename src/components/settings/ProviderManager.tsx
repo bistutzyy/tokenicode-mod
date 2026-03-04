@@ -55,8 +55,11 @@ export function ProviderManager({ alwaysExpanded = false }: { alwaysExpanded?: b
     });
     const { providers: updated } = useProviderStore.getState();
     const last = updated[updated.length - 1];
-    if (last) setEditingId(last.id);
-  }, [addProvider, providers]);
+    if (last) {
+      setActive(last.id);
+      setEditingId(last.id);
+    }
+  }, [addProvider, providers, setActive]);
 
   const handleAddCustom = useCallback(() => {
     addProvider({
@@ -72,8 +75,11 @@ export function ProviderManager({ alwaysExpanded = false }: { alwaysExpanded?: b
     });
     const { providers: updated } = useProviderStore.getState();
     const last = updated[updated.length - 1];
-    if (last) setEditingId(last.id);
-  }, [addProvider]);
+    if (last) {
+      setActive(last.id);
+      setEditingId(last.id);
+    }
+  }, [addProvider, setActive]);
 
   const handleImport = useCallback(async () => {
     const { open: openDialog } = await import('@tauri-apps/plugin-dialog');
@@ -101,12 +107,15 @@ export function ProviderManager({ alwaysExpanded = false }: { alwaysExpanded?: b
       setTimeout(() => setImportStatus('idle'), 3000);
       const { providers: updated } = useProviderStore.getState();
       const last = updated[updated.length - 1];
-      if (last) setEditingId(last.id);
+      if (last) {
+        setActive(last.id);
+        setEditingId(last.id);
+      }
     } catch (e) {
       setImportError(String(e));
       setTimeout(() => setImportError(''), 5000);
     }
-  }, [t]);
+  }, [t, setActive]);
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteTarget) return;

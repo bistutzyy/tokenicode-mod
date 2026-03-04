@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useT } from '../../lib/i18n';
+import { APP_NAME } from '../../lib/edition';
 import { ChangelogModal } from '../shared/ChangelogModal';
 import { isPermissionError, isNetworkError } from './settingsUtils';
 import { GeneralTab } from './GeneralTab';
@@ -224,7 +225,7 @@ function SettingsFooter() {
             <path d="M111.5 49.47L147.22 85.19L111.5 120.92L102.24 111.66L128.7 85.19L102.24 58.73Z" fill="currentColor" />
             <path d="M90.01 39.92L102.01 39.92L79.24 129.92L67.24 129.92L79.24 81.92Z" className="fill-accent" />
           </svg>
-          TOKENICODE {appVersion ? `v${appVersion}` : '...'}
+          {APP_NAME} {appVersion ? `v${appVersion}` : '...'}
         </span>
 
         {/* Right: action buttons */}

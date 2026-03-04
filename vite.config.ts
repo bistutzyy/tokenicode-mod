@@ -4,10 +4,17 @@ import tailwindcss from "@tailwindcss/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const edition = process.env.EDITION || 'stable';
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+
+  define: {
+    __APP_EDITION__: JSON.stringify(edition),
+    __APP_NAME__: JSON.stringify(edition === 'alpha' ? 'TCAlpha' : 'TOKENICODE'),
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

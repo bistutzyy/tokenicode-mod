@@ -1,6 +1,7 @@
 import { useSettingsStore } from '../stores/settingsStore';
 import type { Locale } from '../stores/settingsStore';
 import { modKey, fileManagerName, fileManagerNameEn } from './platform';
+import { APP_NAME } from './edition';
 
 // --- Translation dictionary ---
 
@@ -24,7 +25,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'chat.turns': '轮',
     'chat.toggleFiles': '切换文件面板',
     'chat.scrollToBottom': '滚动到底部',
-    'chat.welcome': '欢迎使用 TOKENICODE',
+    'chat.welcome': `欢迎使用 ${APP_NAME}`,
     'chat.welcomeWithProject': '开始与 Claude Code 协作，CLI 会话在后台无缝运行。',
     'chat.welcomeNoProject': '选择一个项目文件夹以开始。',
 
@@ -577,7 +578,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Setup wizard
     'setup.checking': '正在检测 Claude Code CLI...',
     'setup.notInstalled': '未检测到 Claude Code CLI',
-    'setup.notInstalledDesc': '需要安装 Claude Code CLI 才能使用 TOKENICODE。',
+    'setup.notInstalledDesc': `需要安装 Claude Code CLI 才能使用 ${APP_NAME}。`,
     'setup.install': '安装 Claude Code',
     'setup.installing': '正在安装...',
     'setup.installFailed': '安装失败',
@@ -612,7 +613,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Permission dialog
     'perm.title': '需要文件访问权限',
-    'perm.desc': 'TOKENICODE 需要「完整磁盘访问」权限才能正常读写项目文件。请在系统设置中授权，否则部分功能可能受限。',
+    'perm.desc': `${APP_NAME} 需要「完整磁盘访问」权限才能正常读写项目文件。请在系统设置中授权，否则部分功能可能受限。`,
     'perm.openSettings': '打开系统设置',
     'perm.later': '稍后设置',
     'perm.path': '系统设置 → 隐私与安全性 → 完整磁盘访问',
@@ -637,7 +638,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'chat.turns': 'turns',
     'chat.toggleFiles': 'Toggle file panel',
     'chat.scrollToBottom': 'Scroll to bottom',
-    'chat.welcome': 'Welcome to TOKENICODE',
+    'chat.welcome': `Welcome to ${APP_NAME}`,
     'chat.welcomeWithProject': 'Start working with Claude Code. Your CLI session runs seamlessly in the background.',
     'chat.welcomeNoProject': 'Select a project folder to get started.',
 
@@ -1188,7 +1189,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Setup wizard
     'setup.checking': 'Detecting Claude Code CLI...',
     'setup.notInstalled': 'Claude Code CLI not found',
-    'setup.notInstalledDesc': 'Claude Code CLI is required to use TOKENICODE.',
+    'setup.notInstalledDesc': `Claude Code CLI is required to use ${APP_NAME}.`,
     'setup.install': 'Install Claude Code',
     'setup.installing': 'Installing...',
     'setup.installFailed': 'Installation failed',
@@ -1223,7 +1224,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Permission dialog
     'perm.title': 'File Access Required',
-    'perm.desc': 'TOKENICODE needs Full Disk Access to read and write project files. Please grant access in System Settings, otherwise some features may not work.',
+    'perm.desc': `${APP_NAME} needs Full Disk Access to read and write project files. Please grant access in System Settings, otherwise some features may not work.`,
     'perm.openSettings': 'Open System Settings',
     'perm.later': 'Later',
     'perm.path': 'System Settings → Privacy & Security → Full Disk Access',

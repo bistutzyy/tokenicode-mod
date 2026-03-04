@@ -2,20 +2,34 @@
 set -euo pipefail
 
 # ============================================================
-# TOKENICODE macOS Local Build Script
+# TOKENICODE / TCAlpha macOS Local Build Script
 # Builds, signs, notarizes for both aarch64 and x86_64
 # Then uploads artifacts to the existing GitHub Draft Release
+#
+# Usage:
+#   ./scripts/build-macos-local.sh              # stable (TOKENICODE)
+#   EDITION=alpha ./scripts/build-macos-local.sh # alpha  (TCAlpha)
 # ============================================================
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
+EDITION="${EDITION:-stable}"
 VERSION=$(python3 -c "import json; print(json.load(open('package.json'))['version'])")
-TAG="v$VERSION"
+
+if [ "$EDITION" = "alpha" ]; then
+  TAG="v$VERSION-alpha"
+  PRODUCT_NAME="TCAlpha"
+  TAURI_EXTRA_ARGS="--config editions/alpha/tauri.alpha.conf.json"
+else
+  TAG="v$VERSION"
+  PRODUCT_NAME="TOKENICODE"
+  TAURI_EXTRA_ARGS=""
+fi
 
 echo "============================================"
-echo " TOKENICODE macOS Local Build"
-echo " Version: $VERSION  Tag: $TAG"
+echo " $PRODUCT_NAME macOS Local Build"
+echo " Edition: $EDITION  Version: $VERSION  Tag: $TAG"
 echo "============================================"
 
 # --- Environment Variables ---
@@ -41,6 +55,7 @@ export APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
 export TAURI_SIGNING_PRIVATE_KEY
 TAURI_SIGNING_PRIVATE_KEY="$(cat "$HOME/.tauri/tokenicode.key")"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+export EDITION
 
 # --- Preflight Checks ---
 echo ""
@@ -61,13 +76,13 @@ pnpm install --frozen-lockfile
 # --- Build aarch64 ---
 echo ""
 echo "[3/6] Building aarch64-apple-darwin (Apple Silicon)..."
-pnpm tauri build --target aarch64-apple-darwin 2>&1 | tee /tmp/tauri-build-aarch64.log
+pnpm tauri build --target aarch64-apple-darwin $TAURI_EXTRA_ARGS 2>&1 | tee /tmp/tauri-build-aarch64.log
 echo "  aarch64 build complete."
 
 # --- Build x86_64 ---
 echo ""
 echo "[4/6] Building x86_64-apple-darwin (Intel)..."
-pnpm tauri build --target x86_64-apple-darwin 2>&1 | tee /tmp/tauri-build-x86_64.log
+pnpm tauri build --target x86_64-apple-darwin $TAURI_EXTRA_ARGS 2>&1 | tee /tmp/tauri-build-x86_64.log
 echo "  x86_64 build complete."
 
 # --- Collect Artifacts ---
@@ -76,7 +91,7 @@ echo "[5/6] Collecting artifacts..."
 
 AARCH64_BUNDLE="src-tauri/target/aarch64-apple-darwin/release/bundle"
 X86_64_BUNDLE="src-tauri/target/x86_64-apple-darwin/release/bundle"
-STAGING="/tmp/tokenicode-release-$VERSION"
+STAGING="/tmp/tokenicode-release-$TAG"
 rm -rf "$STAGING"
 mkdir -p "$STAGING"
 

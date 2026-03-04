@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { bridge } from '../../lib/tauri-bridge';
 import { useT } from '../../lib/i18n';
+import { APP_NAME } from '../../lib/edition';
 import { stripAnsi } from '../../lib/strip-ansi';
 import { isPermissionError, isNetworkError } from './settingsUtils';
 
@@ -146,7 +147,7 @@ export function CliTab() {
             onClick={async () => {
               if (status !== 'not_found') {
                 const { ask } = await import('@tauri-apps/plugin-dialog');
-                const confirmed = await ask(t('cli.confirmReinstall'), { title: 'TOKENICODE', kind: 'warning' });
+                const confirmed = await ask(t('cli.confirmReinstall'), { title: APP_NAME, kind: 'warning' });
                 if (!confirmed) return;
               }
               handleInstall();

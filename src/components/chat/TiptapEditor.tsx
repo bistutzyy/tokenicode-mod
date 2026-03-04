@@ -34,6 +34,8 @@ export interface TiptapEditorHandle {
   insertFileChip(attrs: FileChipAttrs): void;
   /** Whether the editor has no content */
   isEmpty(): boolean;
+  /** Whether an IME composition is in progress */
+  isComposing(): boolean;
   /** Get the underlying Tiptap editor instance (escape hatch) */
   getEditor(): ReturnType<typeof useEditor> | null;
 }
@@ -107,6 +109,7 @@ export const TiptapEditor = forwardRef<TiptapEditorHandle, TiptapEditorProps>(
     } = props;
 
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const composingRef = useRef(false);
     const onUpdateRef = useRef(onUpdate);
     onUpdateRef.current = onUpdate;
 
@@ -145,10 +148,32 @@ export const TiptapEditor = forwardRef<TiptapEditorHandle, TiptapEditorProps>(
         },
       },
       onUpdate: ({ editor: ed }) => {
+        // Skip store updates during IME composition to avoid React re-renders
+        // that can disrupt WebKit's contentEditable composition state
+        if (composingRef.current) return;
         const text = editorToPlainText(ed);
         onUpdateRef.current?.(text);
       },
     });
+
+    // Track IME composition state and flush text on compositionend
+    useEffect(() => {
+      const el = editor?.view?.dom;
+      if (!el) return;
+      const onStart = () => { composingRef.current = true; };
+      const onEnd = () => {
+        composingRef.current = false;
+        // Flush the final composed text to the store
+        const text = editorToPlainText(editor);
+        onUpdateRef.current?.(text);
+      };
+      el.addEventListener('compositionstart', onStart);
+      el.addEventListener('compositionend', onEnd);
+      return () => {
+        el.removeEventListener('compositionstart', onStart);
+        el.removeEventListener('compositionend', onEnd);
+      };
+    }, [editor]);
 
     // Update placeholder when prop changes
     useEffect(() => {
@@ -198,6 +223,9 @@ export const TiptapEditor = forwardRef<TiptapEditorHandle, TiptapEditorProps>(
       },
       isEmpty() {
         return editor?.isEmpty ?? true;
+      },
+      isComposing() {
+        return composingRef.current;
       },
       getEditor() {
         return editor;

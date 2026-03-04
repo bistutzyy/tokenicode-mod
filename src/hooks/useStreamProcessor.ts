@@ -7,6 +7,46 @@ import { bridge, onClaudeStream, onClaudeStderr } from '../lib/tauri-bridge';
 import { envFingerprint, resolveModelForProvider } from '../lib/api-provider';
 import { useProviderStore } from '../stores/providerStore';
 
+// --- Streaming text buffer (rAF-throttled) ---
+// Coalesces rapid text_delta / thinking_delta events into a single state update
+// per animation frame (~60/s), preventing JS main thread starvation from
+// excessive React re-renders when the message list is large.
+let _pendingStreamText = '';
+let _pendingThinkingText = '';
+let _streamFlushRaf = 0;
+
+function _scheduleStreamFlush() {
+  if (_streamFlushRaf) return;
+  _streamFlushRaf = requestAnimationFrame(() => {
+    _streamFlushRaf = 0;
+    const { updatePartialMessage, updatePartialThinking } = useChatStore.getState();
+    if (_pendingStreamText) {
+      updatePartialMessage(_pendingStreamText);
+      _pendingStreamText = '';
+    }
+    if (_pendingThinkingText) {
+      updatePartialThinking(_pendingThinkingText);
+      _pendingThinkingText = '';
+    }
+  });
+}
+
+/** Flush any buffered streaming text immediately (call before clearPartial). */
+export function flushStreamBuffer() {
+  if (_streamFlushRaf) {
+    cancelAnimationFrame(_streamFlushRaf);
+    _streamFlushRaf = 0;
+  }
+  if (_pendingStreamText) {
+    useChatStore.getState().updatePartialMessage(_pendingStreamText);
+    _pendingStreamText = '';
+  }
+  if (_pendingThinkingText) {
+    useChatStore.getState().updatePartialThinking(_pendingThinkingText);
+    _pendingThinkingText = '';
+  }
+}
+
 /**
  * Configuration refs and callbacks that the stream processor needs
  * from the parent InputBar component.
@@ -518,7 +558,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
       return;
     }
 
-    const { addMessage, updatePartialMessage, updatePartialThinking,
+    const { addMessage,
       setSessionStatus, setSessionMeta, setActivityStatus } = useChatStore.getState();
     const agentActions = useAgentStore.getState();
     const agentId = resolveAgentId(msg.parent_tool_use_id, agentActions.agents);
@@ -553,6 +593,8 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
 
     // Helper: clear accumulated partial text (it will be replaced by the full message)
     const clearPartial = () => {
+      // Flush any buffered text so the final tokens aren't lost
+      flushStreamBuffer();
       const store = useChatStore.getState();
       if (store.isStreaming || store.partialText || store.partialThinking) {
         useChatStore.setState({ partialText: '', partialThinking: '', isStreaming: false });
@@ -573,14 +615,16 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
           const text = evt.delta.text || '';
           if (text) {
-            // updatePartialMessage now also sets activityStatus to 'writing'
-            updatePartialMessage(text);
+            // Buffer text and flush via rAF to avoid excessive re-renders
+            _pendingStreamText += text;
+            _scheduleStreamFlush();
             agentActions.updatePhase(agentId, 'writing');
           }
         } else if (evt.type === 'content_block_delta' && evt.delta?.type === 'thinking_delta') {
           const thinkingText = evt.delta.thinking || '';
           if (thinkingText) {
-            updatePartialThinking(thinkingText);
+            _pendingThinkingText += thinkingText;
+            _scheduleStreamFlush();
             agentActions.updatePhase(agentId, 'thinking');
           } else {
             setActivityStatus({ phase: 'thinking' });
@@ -1423,8 +1467,8 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         if (msg.type === 'content_block_delta') {
           const text = msg.delta?.text || '';
           if (text) {
-            // updatePartialMessage now also sets activityStatus to 'writing'
-            updatePartialMessage(text);
+            _pendingStreamText += text;
+            _scheduleStreamFlush();
           }
         }
         break;

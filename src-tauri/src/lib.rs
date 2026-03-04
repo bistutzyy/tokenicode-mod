@@ -44,16 +44,20 @@ struct WatcherManager {
     watchers: Arc<TokioMutex<HashMap<String, notify::RecommendedWatcher>>>,
 }
 
+/// Shared app data directory name — all editions (TOKENICODE / TCAlpha) use the same
+/// directory so they share a single CLI installation and settings.
+const APP_DATA_DIR_NAME: &str = "com.tinyzhuang.tokenicode";
+
 /// Path to the CLI download directory under the app's local data dir.
 fn cli_download_dir() -> Option<std::path::PathBuf> {
-    dirs::data_local_dir().map(|d| d.join("com.tinyzhuang.tokenicode").join("cli"))
+    dirs::data_local_dir().map(|d| d.join(APP_DATA_DIR_NAME).join("cli"))
 }
 
 /// Path to the local Git installation directory (Windows only).
 #[cfg(target_os = "windows")]
 fn git_download_dir() -> Result<std::path::PathBuf, String> {
     dirs::data_local_dir()
-        .map(|d| d.join("com.tinyzhuang.tokenicode").join("git"))
+        .map(|d| d.join(APP_DATA_DIR_NAME).join("git"))
         .ok_or_else(|| "Cannot determine app data directory".to_string())
 }
 
@@ -347,6 +351,60 @@ fn find_claude_binary() -> Option<String> {
     None
 }
 
+/// Like find_claude_binary() but skips app-local and npm-global candidates.
+/// Used as a fallback when the primary binary hangs (e.g. broken Bun-compiled binary).
+fn find_claude_binary_skip_app_local() -> Option<String> {
+    // 1. System PATH
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = std::process::Command::new("sh")
+            .args(["-l", "-c", "which claude"])
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() && is_valid_executable(std::path::Path::new(&path)) {
+                    return Some(path);
+                }
+            }
+        }
+    }
+
+    if let Some(home) = dirs::home_dir() {
+        // 2. Claude desktop app bundled CLI
+        #[cfg(target_os = "macos")]
+        {
+            let claude_code_dir = home.join("Library/Application Support/Claude/claude-code");
+            if let Some(bin) = find_newest_version_bin(&claude_code_dir, "claude") {
+                return Some(bin);
+            }
+        }
+        // 3. Common global install paths
+        #[cfg(not(target_os = "windows"))]
+        {
+            for candidate in [
+                home.join(".npm-global/bin/claude"),
+                home.join(".local/bin/claude"),
+            ] {
+                if is_valid_executable(&candidate) {
+                    return Some(candidate.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        for candidate in ["/usr/local/bin/claude", "/opt/homebrew/bin/claude"] {
+            if is_valid_executable(std::path::Path::new(candidate)) {
+                return Some(candidate.to_string());
+            }
+        }
+    }
+
+    None
+}
+
 /// Search a versioned directory for the newest version containing the given binary name
 fn find_newest_version_bin(base_dir: &std::path::Path, bin_name: &str) -> Option<String> {
     if !base_dir.exists() {
@@ -447,6 +505,91 @@ fn login_shell_proxy_env() -> &'static HashMap<String, String> {
             eprintln!("login shell proxy env captured: {:?}", map.keys().collect::<Vec<_>>());
         }
         map
+    })
+}
+
+/// Resolve the best proxy URL from environment variables and login shell.
+/// Returns Some(url) if a proxy is configured, None otherwise.
+fn resolve_proxy_url() -> Option<String> {
+    // 1. Check current process env vars (set by VPN/Clash when running)
+    let from_env = std::env::var("https_proxy").ok()
+        .or_else(|| std::env::var("HTTPS_PROXY").ok())
+        .or_else(|| std::env::var("all_proxy").ok())
+        .or_else(|| std::env::var("ALL_PROXY").ok())
+        .or_else(|| std::env::var("http_proxy").ok())
+        .or_else(|| std::env::var("HTTP_PROXY").ok());
+    if let Some(url) = from_env {
+        if !url.is_empty() {
+            return Some(url);
+        }
+    }
+    // 2. macOS/Linux GUI apps don't inherit shell env; check login shell
+    #[cfg(not(target_os = "windows"))]
+    {
+        let proxy_env = login_shell_proxy_env();
+        let url = proxy_env.get("https_proxy")
+            .or_else(|| proxy_env.get("HTTPS_PROXY"))
+            .or_else(|| proxy_env.get("all_proxy"))
+            .or_else(|| proxy_env.get("ALL_PROXY"))
+            .or_else(|| proxy_env.get("http_proxy"))
+            .or_else(|| proxy_env.get("HTTP_PROXY"));
+        if let Some(u) = url {
+            if !u.is_empty() {
+                return Some(u.clone());
+            }
+        }
+    }
+    None
+}
+
+/// Check if a proxy endpoint is actually reachable (TCP connect with 1s timeout).
+async fn is_proxy_reachable(proxy_url: &str) -> bool {
+    // Parse host:port from proxy URL like "http://127.0.0.1:7890"
+    let addr = proxy_url
+        .trim_start_matches("http://")
+        .trim_start_matches("https://")
+        .trim_start_matches("socks5://")
+        .trim_start_matches("socks5h://")
+        .trim_end_matches('/');
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(1),
+        tokio::net::TcpStream::connect(addr),
+    ).await {
+        Ok(Ok(_)) => true,
+        _ => false,
+    }
+}
+
+/// Build a reqwest Client with smart proxy handling.
+///
+/// Logic: if a proxy URL is found in env/login-shell, probe the proxy port first.
+/// If reachable → use proxy; if not (VPN off) → bypass and connect directly.
+/// This makes the app "just work" regardless of VPN state.
+async fn build_smart_http_client(
+    connect_timeout: std::time::Duration,
+    request_timeout: std::time::Duration,
+) -> reqwest::Client {
+    let mut builder = reqwest::Client::builder()
+        .connect_timeout(connect_timeout)
+        .timeout(request_timeout)
+        .no_proxy(); // Disable automatic env proxy reading — we manage it ourselves
+
+    if let Some(proxy_url) = resolve_proxy_url() {
+        if is_proxy_reachable(&proxy_url).await {
+            if let Ok(proxy) = reqwest::Proxy::all(&proxy_url) {
+                eprintln!("Smart proxy: using proxy {}", proxy_url);
+                builder = builder.proxy(proxy);
+            }
+        } else {
+            eprintln!("Smart proxy: proxy {} unreachable, connecting directly", proxy_url);
+        }
+    }
+
+    builder.build().unwrap_or_else(|_| {
+        reqwest::Client::builder()
+            .no_proxy()
+            .build()
+            .unwrap_or_default()
     })
 }
 
@@ -625,7 +768,7 @@ fn build_enriched_path() -> String {
 /// Directory for TOKENICODE app data (may be wiped by NSIS installer on Windows)
 fn app_data_dir() -> Result<std::path::PathBuf, String> {
     dirs::data_local_dir()
-        .map(|d| d.join("com.tinyzhuang.tokenicode"))
+        .map(|d| d.join(APP_DATA_DIR_NAME))
         .ok_or_else(|| "Cannot determine app data directory".to_string())
 }
 
@@ -713,37 +856,11 @@ fn save_providers(data: ProvidersFile) -> Result<(), String> {
 
 #[tauri::command]
 async fn test_provider_connection(base_url: String, api_format: String, api_key: String, model: String) -> Result<String, String> {
-    // Build client with proxy from login shell if not in current env (GUI apps lack shell proxy vars)
-    let client = {
-        let mut builder = reqwest::Client::builder();
-        #[cfg(not(target_os = "windows"))]
-        {
-            let proxy_env = login_shell_proxy_env();
-            // reqwest reads https_proxy/http_proxy from env by default, but GUI apps don't have them.
-            // If current env lacks proxy but login shell has it, configure explicitly.
-            let has_proxy = std::env::var("https_proxy").is_ok()
-                || std::env::var("HTTPS_PROXY").is_ok()
-                || std::env::var("http_proxy").is_ok()
-                || std::env::var("HTTP_PROXY").is_ok()
-                || std::env::var("all_proxy").is_ok()
-                || std::env::var("ALL_PROXY").is_ok();
-            if !has_proxy {
-                // Try https_proxy / HTTPS_PROXY first, then all_proxy / ALL_PROXY
-                let proxy_url = proxy_env.get("https_proxy")
-                    .or_else(|| proxy_env.get("HTTPS_PROXY"))
-                    .or_else(|| proxy_env.get("all_proxy"))
-                    .or_else(|| proxy_env.get("ALL_PROXY"))
-                    .or_else(|| proxy_env.get("http_proxy"))
-                    .or_else(|| proxy_env.get("HTTP_PROXY"));
-                if let Some(url) = proxy_url {
-                    if let Ok(proxy) = reqwest::Proxy::all(url) {
-                        builder = builder.proxy(proxy);
-                    }
-                }
-            }
-        }
-        builder.build().unwrap_or_else(|_| reqwest::Client::new())
-    };
+    // Smart proxy: probes proxy port first, falls back to direct if VPN is off
+    let client = build_smart_http_client(
+        std::time::Duration::from_secs(10),
+        std::time::Duration::from_secs(30),
+    ).await;
 
     let (_url, resp_result) = if api_format == "openai" {
         let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
@@ -3147,38 +3264,76 @@ async fn run_claude_command(subcommand: String, cwd: Option<String>) -> Result<S
 /// Check whether the Claude CLI is installed and return its path and version.
 #[tauri::command]
 async fn check_claude_cli() -> Result<CliStatus, String> {
+    eprintln!("[check_claude_cli] START");
     let binary = find_claude_binary();
+    eprintln!("[check_claude_cli] find_claude_binary => {:?}", binary);
     match binary {
         Some(path) => {
             // Try to get the version
             let enriched_path = build_enriched_path();
+            eprintln!("[check_claude_cli] running '{} --version'...", path);
 
             // On Windows, .cmd files need cmd /C wrapper
             #[cfg(target_os = "windows")]
             let output_result = {
                 let needs_cmd = path.ends_with(".cmd") || path.ends_with(".bat");
-                if needs_cmd {
+                let fut = if needs_cmd {
                     Command::new("cmd")
                         .args(["/C", &path, "--version"])
                         .env("PATH", &enriched_path)
                         .creation_flags(0x08000000)
                         .output()
-                        .await
                 } else {
                     Command::new(&path)
                         .arg("--version")
                         .env("PATH", &enriched_path)
                         .creation_flags(0x08000000)
                         .output()
-                        .await
+                };
+                match tokio::time::timeout(std::time::Duration::from_secs(5), fut).await {
+                    Ok(r) => r,
+                    Err(_) => {
+                        eprintln!("[check_claude_cli] --version timed out for '{}', trying fallback...", path);
+                        let fallback = find_claude_binary_skip_app_local();
+                        let git_bash_missing = find_git_bash().is_none();
+                        return match fallback {
+                            Some(alt_path) => {
+                                eprintln!("[check_claude_cli] fallback found: {}", alt_path);
+                                Ok(CliStatus { installed: true, path: Some(alt_path), version: None, git_bash_missing })
+                            }
+                            None => Ok(CliStatus { installed: false, path: None, version: None, git_bash_missing: false }),
+                        };
+                    }
                 }
             };
             #[cfg(not(target_os = "windows"))]
-            let output_result = Command::new(&path)
-                .arg("--version")
-                .env("PATH", &enriched_path)
-                .output()
-                .await;
+            let output_result = match tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                Command::new(&path)
+                    .arg("--version")
+                    .env("PATH", &enriched_path)
+                    .output(),
+            )
+            .await
+            {
+                Ok(r) => r,
+                Err(_) => {
+                    eprintln!("[check_claude_cli] --version timed out for '{}', trying fallback...", path);
+                    // The app-local binary is hanging; try to find an alternative via system PATH
+                    let fallback = find_claude_binary_skip_app_local();
+                    #[cfg(target_os = "windows")]
+                    let git_bash_missing = find_git_bash().is_none();
+                    #[cfg(not(target_os = "windows"))]
+                    let git_bash_missing = false;
+                    return match fallback {
+                        Some(alt_path) => {
+                            eprintln!("[check_claude_cli] fallback found: {}", alt_path);
+                            Ok(CliStatus { installed: true, path: Some(alt_path), version: None, git_bash_missing })
+                        }
+                        None => Ok(CliStatus { installed: false, path: None, version: None, git_bash_missing: false }),
+                    };
+                }
+            };
 
             let version = match output_result {
                 Ok(output) if output.status.success() => {
@@ -3249,7 +3404,11 @@ async fn check_claude_cli() -> Result<CliStatus, String> {
 static CHINA_NETWORK: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
 
 async fn detect_china_network() -> bool {
+    // Network detection must bypass proxy to test the real network path.
+    // If proxy is used, Google might be reachable via proxy even in China,
+    // giving a false negative.
     let client = reqwest::Client::builder()
+        .no_proxy()
         .connect_timeout(std::time::Duration::from_secs(3))
         .timeout(std::time::Duration::from_secs(3))
         .build()
@@ -3748,11 +3907,10 @@ async fn install_node_env_inner(app: &AppHandle, china: bool) -> Result<(), Stri
     std::fs::create_dir_all(&install_dir)
         .map_err(|e| format!("Failed to create node dir: {}", e))?;
 
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(10))
-        .timeout(std::time::Duration::from_secs(120))
-        .build()
-        .map_err(|e| format!("HTTP client error: {}", e))?;
+    let client = build_smart_http_client(
+        std::time::Duration::from_secs(10),
+        std::time::Duration::from_secs(120),
+    ).await;
 
     // Network-aware source ordering
     let sources: Vec<String> = if china {
@@ -3892,11 +4050,10 @@ async fn install_git_bash_inner(app: &AppHandle, china: bool) -> Result<(), Stri
         ]
     };
 
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(15)) // Fast failover between mirrors
-        .timeout(std::time::Duration::from_secs(300)) // 5 min for large download
-        .build()
-        .map_err(|e| format!("HTTP client error: {}", e))?;
+    let client = build_smart_http_client(
+        std::time::Duration::from_secs(15),  // Fast failover between mirrors
+        std::time::Duration::from_secs(300), // 5 min for large download
+    ).await;
 
     let mut last_err = String::new();
     let mut archive_bytes: Option<Vec<u8>> = None;

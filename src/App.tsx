@@ -13,6 +13,7 @@ import type { ColorTheme, Theme } from './stores/settingsStore';
 import { useFileStore } from './stores/fileStore';
 import { useChatStore } from './stores/chatStore';
 import { useSessionStore } from './stores/sessionStore';
+import { APP_NAME, IS_ALPHA } from './lib/edition';
 import { useAgentStore } from './stores/agentStore';
 import { bridge, onFileChange } from './lib/tauri-bridge';
 import { useAutoUpdateCheck } from './hooks/useAutoUpdateCheck';
@@ -28,11 +29,24 @@ const THEME_ACCENT_COLORS: Record<ColorTheme, string> = {
   green: '#57A64B',
 };
 
-/** Render the app icon SVG: black bg, white brackets, accent-colored slash — return base64 PNG */
+/** Render the app icon SVG as base64 PNG for macOS Dock.
+ *  Stable: black bg, white brackets, accent-colored slash.
+ *  Alpha: rainbow gradient bg, white brackets and slash. */
 function renderIconPng(accentColor: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const size = 512;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="-20.75 -20.75 212.5 212.5">
+    const svg = IS_ALPHA
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="-20.75 -20.75 212.5 212.5">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#7B2FF7"/><stop offset="35%" stop-color="#4E80F7"/>
+<stop offset="65%" stop-color="#38BDF8"/><stop offset="100%" stop-color="#34D399"/>
+</linearGradient></defs>
+<rect width="171" height="171" rx="38.5" fill="url(#bg)"/>
+<path d="M66.7913 58.7327L40.3284 85.1946L66.7913 111.657L57.5295 120.919L21.8049 85.1946L57.5295 49.471L66.7913 58.7327Z" fill="white"/>
+<path d="M111.497 49.471L147.222 85.1946L111.497 120.919L102.236 111.657L128.698 85.1946L102.236 58.7327L111.497 49.471Z" fill="white"/>
+<path d="M90.0113 39.9192L102.011 39.9192L79.2356 129.919L67.2356 129.919L79.2356 81.9192L90.0113 39.9192Z" fill="white"/>
+</svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="-20.75 -20.75 212.5 212.5">
 <rect width="171" height="171" rx="38.5" fill="#000000"/>
 <path d="M66.7913 58.7327L40.3284 85.1946L66.7913 111.657L57.5295 120.919L21.8049 85.1946L57.5295 49.471L66.7913 58.7327Z" fill="white"/>
 <path d="M111.497 49.471L147.222 85.1946L111.497 120.919L102.236 111.657L128.698 85.1946L102.236 58.7327L111.497 49.471Z" fill="white"/>
@@ -49,7 +63,6 @@ function renderIconPng(accentColor: string): Promise<string> {
       ctx.drawImage(img, 0, 0, size, size);
       URL.revokeObjectURL(url);
       const dataUrl = canvas.toDataURL('image/png');
-      // Strip "data:image/png;base64," prefix
       resolve(dataUrl.split(',')[1]);
     };
     img.onerror = () => {
@@ -103,7 +116,7 @@ function App() {
         closePendingRef.current = true;
         try {
           const { ask } = await import('@tauri-apps/plugin-dialog');
-          const confirmed = await ask(tRef.current('confirm.exit'), { title: 'TOKENICODE', kind: 'warning' });
+          const confirmed = await ask(tRef.current('confirm.exit'), { title: APP_NAME, kind: 'warning' });
           if (confirmed) {
             const { exit } = await import('@tauri-apps/plugin-process');
             await exit(0);
@@ -119,12 +132,11 @@ function App() {
   // macOS Full Disk Access check — detect TCC restrictions on startup
   const [showPermDialog, setShowPermDialog] = useState(false);
   useEffect(() => {
-    // Only relevant on macOS
     const isMac = navigator.userAgent.includes('Mac');
     if (!isMac) return;
-    // Check access to the user's Documents directory (TCC-protected)
-    const home = '/Users';
-    bridge.checkFileAccess(home).then((ok) => {
+    // Skip if user previously dismissed the dialog
+    if (localStorage.getItem('tokenicode-perm-dismissed')) return;
+    bridge.checkFileAccess('/Users').then((ok) => {
       if (!ok) setShowPermDialog(true);
     }).catch(() => {});
   }, []);
@@ -372,7 +384,10 @@ function App() {
             {/* Actions */}
             <div className="px-6 py-4 flex items-center justify-end gap-2">
               <button
-                onClick={() => setShowPermDialog(false)}
+                onClick={() => {
+                  localStorage.setItem('tokenicode-perm-dismissed', '1');
+                  setShowPermDialog(false);
+                }}
                 className="px-4 py-2 rounded-lg text-xs font-medium
                   text-text-muted hover:text-text-primary hover:bg-bg-tertiary
                   transition-smooth cursor-pointer"
@@ -381,6 +396,7 @@ function App() {
               </button>
               <button
                 onClick={() => {
+                  localStorage.setItem('tokenicode-perm-dismissed', '1');
                   openUrl('x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles');
                   setShowPermDialog(false);
                 }}

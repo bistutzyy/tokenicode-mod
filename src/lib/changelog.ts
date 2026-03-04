@@ -14,15 +14,27 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '0.8.2',
-    date: '2026-03-03',
+    date: '2026-03-04',
     highlights: {
       zh: [
-        '修复内存泄漏 — 面板拖拽时事件监听器不再累积，长时间使用不再卡顿（感谢 @qs858053851-wq 反馈）',
-        '降低会话缓存上限 — 后台缓存从 20 降至 8，减少内存占用',
+        '修复长对话卡死 — 超过 5 轮对话后流式输出不再卡住，重大性能优化',
+        '修复权限弹窗反复弹出 — 点过「稍后」后不会再次弹出',
+        '修复内存泄漏 — 面板拖拽时事件监听器不再累积（感谢 @qs858053851-wq 反馈）',
+        '切换对话时输入框内容正确跟随切换',
+        '修复中文输入法偶发丢失焦点',
+        '新增/导入 API 后自动生效，无需手动选择',
+        'VPN 关闭后 API 自动切换直连，无需手动操作',
+        '双版本体系 — 一套代码支持 TCAlpha 内测版和 TOKENICODE 稳定版',
       ],
       en: [
-        'Fix memory leak — Panel resize event listeners no longer accumulate, no more sluggishness after extended use (thanks @qs858053851-wq)',
-        'Reduce session cache limit — Background cache reduced from 20 to 8, lowering memory footprint',
+        'Fix long conversation freeze — Streaming no longer stalls after 5+ turns, major performance improvement',
+        'Fix permission dialog re-appearing — Dismissal is now persisted',
+        'Fix memory leak — Panel resize listeners no longer accumulate (thanks @qs858053851-wq)',
+        'Input content follows tab switch correctly',
+        'Fix CJK IME occasionally losing focus',
+        'New/imported API providers auto-activate',
+        'Auto-switch to direct connection when VPN is off',
+        'Dual-edition system — One codebase supports TCAlpha and TOKENICODE',
       ],
     },
   },

@@ -4,6 +4,34 @@ All notable changes to TOKENICODE will be documented in this file.
 
 本文件记录 TOKENICODE 的所有重要更新。
 
+> **双版本管理**：标记 `[Alpha-only]` 的条目仅影响 TCAlpha 内测版，稳定版发布时跳过。代码层面这些修复仍会合入 stable（防御性编程），但不出现在稳定版发行说明中。
+
+---
+
+## [0.8.2] - 2026-03-04
+
+### Fixed
+
+- **长对话流式卡死** — 对话超过 5 轮后，流式输出卡住不动（一直显示 holding），退出重进才能看到内容。根因：每个 text_delta token（~50-100次/秒）直接触发 Zustand state 更新 → React 重渲染（包括 MarkdownRenderer 重新解析全部累积文本），大 DOM 下渲染时间超过事件间隔，JS 主线程永久阻塞。修复：用 `requestAnimationFrame` 做流式文本缓冲，将 state 更新频率从 ~100次/秒 限制到 ~60次/秒（屏幕刷新率），多个 token 合并为一次更新。
+
+- **权限弹窗反复弹出** — 每次启动都弹 Full Disk Access 权限对话框，即使用户已点过「稍后」。原因：用户选择后的消除状态未持久化。修复：用 `localStorage` 记录消除状态，启动时检查跳过。
+
+- **高 CPU 占用和内存泄漏 (#4)** — 面板拖拽调宽度时，resize 回调因依赖数组包含 state 值而在每像素拖动时重建，导致 `mousemove`/`mouseup` 监听器反复注册、无法回收。改为用 ref 捕获值，事件监听器只在 mount 时注册一次。影响 ChatPanel（PlanPanel 拖拽）和 AppShell（右面板/预览/侧边栏拖拽）。同时将会话缓存 LRU 上限从 20 降至 8，降低内存压力。感谢 @qs858053851-wq 的详细报告和调用栈分析。
+
+- **切换对话后输入框内容没跟着切换** — 切换会话时，输入框的文字和附件仍停留在上一个对话的内容。原因是 `restoreFromCache` 恢复了 store 中的 `inputDraft`，但 TiptapEditor 没有监听这个变化来同步显示。新增 `useEffect` 监听 `inputDraft`，当编辑器内容与 store 不一致时同步更新，同时避免用户正常输入时重置光标。
+
+- **中文输入法偶发丢失焦点** — IME composition 期间，Tiptap 的 `onUpdate` 会触发 Zustand store 更新 → React 重渲染 → DOM 变化打断 WebKit contentEditable 的合成状态。修复：composition 期间跳过 `onUpdate` 回调，`compositionend` 时一次性 flush 最终文本；InputBar 的 inputDraft 同步 `useEffect` 也增加 composition 防护，避免 `setText` 破坏正在进行的输入。
+
+- **新增/导入 API 后不会自动生效** — 添加自定义 API、预设 API 或导入 API 配置后，现在会自动激活为当前使用的 API，不再需要手动点选。
+
+- **VPN 关闭后 API 连不上** — reqwest 默认读取系统代理环境变量（`https_proxy` 等），VPN 关闭后代理端口不存在导致所有 HTTP 请求失败。新增 `build_smart_http_client()` 统一工厂：先探测代理端口是否可达，活着走代理、死了自动直连，用户无感。覆盖 API 连接测试、Node/Git 下载共 3 处调用点。`detect_china_network` 改为强制 `no_proxy` 以确保探测真实网络路径。
+
+- **`[Alpha-only]` CLI 检测卡死导致全局无响应** — `check_claude_cli()` 调用 `claude --version` 无超时保护。当 app-local CLI 二进制（Bun 编译）挂住时，悬挂子进程堆积拖垮 tokio 异步运行时，导致文件树、设置等所有 IPC 调用无响应。新增 5 秒超时 + `find_claude_binary_skip_app_local()` 降级到系统 PATH CLI。同时修复 Alpha 窗口配置（Tauri `--config` array merge 覆盖丢失 width/height/titleBarStyle）。
+
+### Added
+
+- **双版本体系（TCAlpha / TOKENICODE）** — 引入 edition 配置层，一套代码支持两个版本：TCAlpha（内测 Alpha）和 TOKENICODE（外部稳定版）。通过 Tauri `--config` overlay 和 Vite `define` 编译时常量切换产品名称、图标、Logo、更新通道。新增 `editions/alpha/` 配置目录、`src/lib/edition.ts` 版本标识工具、`scripts/bump-version.sh` 三文件版本同步脚本。构建脚本支持 `EDITION=alpha` 参数。TCAlpha 使用彩虹渐变图标（紫→蓝→青→绿），macOS Dock 图标随版本自动切换。
+
 ---
 
 ## [0.8.1] - 2026-03-02
