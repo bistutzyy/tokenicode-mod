@@ -136,11 +136,16 @@ fn find_git_bash() -> Option<String> {
     if let Some(local) = get_local_git_bash() {
         return Some(local);
     }
-    // 2. Check standard installation paths
-    let candidates = [
-        r"C:\Program Files\Git\bin\bash.exe",
-        r"C:\Program Files (x86)\Git\bin\bash.exe",
+    // 2. Check standard installation paths (all common drive letters)
+    let mut candidates = vec![
+        r"C:\Program Files\Git\bin\bash.exe".to_string(),
+        r"C:\Program Files (x86)\Git\bin\bash.exe".to_string(),
     ];
+    // Also check non-C drives (D:, E:, F:, etc.) where Git may be installed
+    for drive in b'D'..=b'F' {
+        candidates.push(format!(r"{}:\Program Files\Git\bin\bash.exe", drive as char));
+    }
+    let candidates = candidates;
     for c in &candidates {
         if std::path::Path::new(c).exists() {
             return Some(c.to_string());
@@ -586,6 +591,36 @@ async fn build_smart_http_client(
     })
 }
 
+/// Truncate excessively large string values inside a JSON structure.
+/// Used to prevent Tauri IPC / WebView freezes when Claude CLI returns
+/// huge tool results (e.g. 24MB PDF text content).
+fn truncate_large_content(value: &mut Value, max_bytes: usize) {
+    match value {
+        Value::String(s) => {
+            if s.len() > max_bytes {
+                // Truncate at a safe UTF-8 boundary
+                let mut end = max_bytes;
+                while end > 0 && !s.is_char_boundary(end) {
+                    end -= 1;
+                }
+                s.truncate(end);
+                s.push_str("\n\n... [content truncated for display, full content available to Claude]");
+            }
+        }
+        Value::Array(arr) => {
+            for item in arr.iter_mut() {
+                truncate_large_content(item, max_bytes);
+            }
+        }
+        Value::Object(map) => {
+            for (_k, v) in map.iter_mut() {
+                truncate_large_content(v, max_bytes);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Build an enriched PATH that includes common binary locations
 fn build_enriched_path() -> String {
     let current = std::env::var("PATH").unwrap_or_default();
@@ -623,6 +658,38 @@ fn build_enriched_path() -> String {
             let git_cmd = git_dir.join("cmd");
             if git_cmd.exists() {
                 paths.push(git_cmd.to_string_lossy().to_string());
+            }
+            // Also add usr/bin/ for cygpath.exe (required by Claude CLI for path conversion)
+            let git_usr_bin = git_dir.join("usr").join("bin");
+            if git_usr_bin.exists() {
+                paths.push(git_usr_bin.to_string_lossy().to_string());
+            }
+        }
+
+        // Also check system-installed Git (not just app-local PortableGit)
+        // to find usr/bin/cygpath.exe which Claude CLI needs for path conversion.
+        if let Some(git_bash_path) = find_git_bash() {
+            // git_bash_path is like "D:\Program Files\Git\bin\bash.exe"
+            // We need the parent's parent to get the Git root, then add usr/bin
+            let bash_path = std::path::Path::new(&git_bash_path);
+            if let Some(git_root) = bash_path.parent().and_then(|p| p.parent()) {
+                let usr_bin = git_root.join("usr").join("bin");
+                if usr_bin.exists() {
+                    let usr_bin_str = usr_bin.to_string_lossy().to_string();
+                    if !paths.contains(&usr_bin_str) {
+                        paths.push(usr_bin_str);
+                    }
+                }
+                // Also ensure Git bin/ and cmd/ are in PATH
+                for sub in &["bin", "cmd"] {
+                    let dir = git_root.join(sub);
+                    if dir.exists() {
+                        let dir_str = dir.to_string_lossy().to_string();
+                        if !paths.contains(&dir_str) {
+                            paths.push(dir_str);
+                        }
+                    }
+                }
             }
         }
     }
@@ -1161,6 +1228,18 @@ async fn start_claude_session(
         "1".to_string(),
     );
 
+    // On Windows, disable MSYS2/Git Bash automatic path conversion.
+    // Without this, MSYS2 converts Windows paths (e.g. F:\秀\input\file.xlsx)
+    // to Unix-style paths (/f/秀/input/file.xlsx), which breaks file operations
+    // especially with non-ASCII (Chinese) characters in paths.
+    #[cfg(target_os = "windows")]
+    {
+        resolved_env.entry("MSYS_NO_PATHCONV".to_string())
+            .or_insert_with(|| "1".to_string());
+        resolved_env.entry("MSYS2_ARG_CONV_EXCL".to_string())
+            .or_insert_with(|| "*".to_string());
+    }
+
     // On Windows, auto-detect git-bash and inject CLAUDE_CODE_GIT_BASH_PATH
     // so Claude Code CLI can find bash.exe without user manual configuration.
     #[cfg(target_os = "windows")]
@@ -1371,7 +1450,10 @@ async fn start_claude_session(
     let is_bypass = permission_mode == "bypassPermissions";
     tokio::spawn(async move {
         let stream_event = format!("claude:stream:{}", sid_clone);
-        let reader = BufReader::new(stdout);
+        // Use a large buffer (1MB) to efficiently read large NDJSON lines from Claude CLI.
+        // Default 8KB buffer causes thousands of syscalls for large outputs (e.g. 24.8MB PDF),
+        // which stalls on Windows pipes. 1MB buffer reduces syscalls by ~125x.
+        let reader = BufReader::with_capacity(1024 * 1024, stdout);
         let mut lines = reader.lines();
         let mut line_count: u64 = 0;
         let spawn_time = std::time::Instant::now();
@@ -1509,8 +1591,31 @@ async fn start_claude_session(
                 }
             }
 
-            // Normal message — forward to frontend stream
-            if let Err(e) = emit_to_frontend(&app_clone, &stream_event, json) {
+            // Normal message — forward to frontend stream.
+            // For very large messages (e.g. PDF content, large file reads), truncate the
+            // content before sending through Tauri IPC to avoid freezing the WebView.
+            // Claude CLI already has the full content internally; the frontend only needs
+            // a preview for display purposes.
+            let json_to_emit = {
+                let serialized_len = line.len();
+                const MAX_IPC_BYTES: usize = 2 * 1024 * 1024; // 2MB threshold
+                if serialized_len > MAX_IPC_BYTES {
+                    let mut truncated = json.clone();
+                    // Truncate content in tool_result blocks and message content
+                    if let Some(content) = truncated.get_mut("content") {
+                        truncate_large_content(content, MAX_IPC_BYTES / 2);
+                    }
+                    if let Some(msg) = truncated.get_mut("message") {
+                        if let Some(content) = msg.get_mut("content") {
+                            truncate_large_content(content, MAX_IPC_BYTES / 2);
+                        }
+                    }
+                    truncated
+                } else {
+                    json
+                }
+            };
+            if let Err(e) = emit_to_frontend(&app_clone, &stream_event, json_to_emit) {
                 eprintln!("[TOKENICODE] emit_to_frontend failed: {}", e);
             }
         }
@@ -1539,7 +1644,7 @@ async fn start_claude_session(
     let app_clone2 = app.clone();
     let sid_clone2 = sid.clone();
     tokio::spawn(async move {
-        let reader = BufReader::new(stderr);
+        let reader = BufReader::with_capacity(256 * 1024, stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
             let _ = emit_to_frontend(
@@ -3446,15 +3551,20 @@ async fn rewind_files(session_id: String, checkpoint_uuid: String, cwd: String) 
 
     let enriched_path = build_enriched_path();
 
-    let output = tokio::process::Command::new(&claude_bin)
-        .args(&[
+    let mut rewind_cmd = tokio::process::Command::new(&claude_bin);
+    rewind_cmd.args(&[
             "--resume", &session_id,
             "--rewind-files", &checkpoint_uuid,
         ])
         .current_dir(&cwd)
         .env("PATH", &enriched_path)
         .env("CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING", "1")
-        .env_remove("CLAUDECODE")
+        .env_remove("CLAUDECODE");
+    // Disable MSYS2 auto path conversion on Windows (Chinese path fix)
+    #[cfg(target_os = "windows")]
+    rewind_cmd.env("MSYS_NO_PATHCONV", "1").env("MSYS2_ARG_CONV_EXCL", "*");
+
+    let output = rewind_cmd
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .output()
@@ -3498,7 +3608,11 @@ async fn run_claude_command(subcommand: String, cwd: Option<String>) -> Result<S
     cmd.env_remove("CLAUDECODE");
     cmd.stdin(Stdio::null());
     #[cfg(target_os = "windows")]
-    cmd.creation_flags(0x08000000);
+    {
+        cmd.creation_flags(0x08000000);
+        // Disable MSYS2 auto path conversion on Windows (Chinese path fix)
+        cmd.env("MSYS_NO_PATHCONV", "1").env("MSYS2_ARG_CONV_EXCL", "*");
+    }
     if let Some(ref dir) = cwd {
         cmd.current_dir(dir);
     }
@@ -4886,6 +5000,10 @@ async fn generate_session_title(
         .env_remove("CLAUDE_CODE_ENTRY") // Remove any other nesting guards
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
+
+    // Disable MSYS2 auto path conversion on Windows (Chinese path fix)
+    #[cfg(target_os = "windows")]
+    cmd.env("MSYS_NO_PATHCONV", "1").env("MSYS2_ARG_CONV_EXCL", "*");
 
     // Inject provider env vars
     for (k, v) in &provider_env {
