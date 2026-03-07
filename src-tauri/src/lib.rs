@@ -183,7 +183,6 @@ fn find_git_bash() -> Option<String> {
     for drive in b'D'..=b'F' {
         candidates.push(format!(r"{}:\Program Files\Git\bin\bash.exe", drive as char));
     }
-    let candidates = candidates;
     for c in &candidates {
         if std::path::Path::new(c).exists() {
             return Some(c.to_string());
