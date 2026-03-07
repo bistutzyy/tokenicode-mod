@@ -290,13 +290,14 @@ function TreeNode({
   const [expanded, setExpanded] = useState(false);
   const selectedFile = useFileStore((s) => s.selectedFile);
   const selectFile = useFileStore((s) => s.selectFile);
-  const changedFiles = useFileStore((s) => s.changedFiles);
-  const isSelected = selectedFile === node.path;
-  const changeKind = changedFiles.get(node.path);
-
-  const hasChildChanges = node.is_dir && Array.from(changedFiles.keys()).some(
-    (p) => p.startsWith(node.path + '/')
+  const changeKind = useFileStore((s) => s.changedFiles.get(node.path));
+  const dirPrefix = node.path + '/';
+  const hasChildChanges = useFileStore((s) =>
+    node.is_dir
+      ? Array.from(s.changedFiles.keys()).some((p) => p.startsWith(dirPrefix))
+      : false
   );
+  const isSelected = selectedFile === node.path;
 
   const isExpanded = expanded;
 
@@ -476,6 +477,8 @@ export function FileExplorer() {
   const createFile = useFileStore((s) => s.createFile);
   const createFolder = useFileStore((s) => s.createFolder);
   const isDragOverTree = useFileStore((s) => s.isDragOverTree);
+  const showHiddenFiles = useSettingsStore((s) => s.showHiddenFiles);
+  const toggleHiddenFiles = useSettingsStore((s) => s.toggleHiddenFiles);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -490,6 +493,16 @@ export function FileExplorer() {
   // New file/folder inline creation state
   const [creatingIn, setCreatingIn] = useState<{ dir: string; type: 'file' | 'folder' } | null>(null);
   const [createName, setCreateName] = useState('');
+
+  const filteredTree = useMemo(() => {
+    if (showHiddenFiles) return tree;
+    function filterNodes(nodes: FileNode[]): FileNode[] {
+      return nodes
+        .filter((n) => !n.name.startsWith('.'))
+        .map((n) => n.children ? { ...n, children: filterNodes(n.children) } : n);
+    }
+    return filterNodes(tree);
+  }, [tree, showHiddenFiles]);
 
   const changedCount = changedFiles.size;
 
@@ -685,6 +698,26 @@ export function FileExplorer() {
               <path d="M7 8v3M5.5 9.5h3" />
             </svg>
           </button>
+          <button onClick={toggleHiddenFiles}
+            className={`p-1.5 rounded-lg hover:bg-bg-secondary active:bg-bg-tertiary
+              transition-smooth ${showHiddenFiles ? 'text-accent' : 'text-text-tertiary hover:text-text-secondary'}`}
+            title={t('files.toggleHidden')}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              {showHiddenFiles ? (
+                <>
+                  <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" />
+                  <circle cx="8" cy="8" r="2" />
+                </>
+              ) : (
+                <>
+                  <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" />
+                  <circle cx="8" cy="8" r="2" />
+                  <path d="M2 14L14 2" />
+                </>
+              )}
+            </svg>
+          </button>
           <button onClick={() => {
               clearChangedFiles();
               const dir = workingDirectory || rootPath;
@@ -750,16 +783,16 @@ export function FileExplorer() {
           </div>
         )}
         <div className="h-full overflow-y-auto py-1">
-        {isLoading && tree.length === 0 ? (
+        {isLoading && filteredTree.length === 0 ? (
           <div className="flex items-center justify-center py-8">
             <div className="w-5 h-5 border-2 border-accent/30
               border-t-accent rounded-full animate-spin" />
           </div>
-        ) : tree.length > 0 ? (
+        ) : filteredTree.length > 0 ? (
           searchQuery ? (
             // --- Flat search results ---
             (() => {
-              const matches = collectMatches(tree, searchQuery.toLowerCase(), rootPath || '');
+              const matches = collectMatches(filteredTree, searchQuery.toLowerCase(), rootPath || '');
               return matches.length > 0 ? (
                 <div className="py-1">
                   {matches.map((m) => (
@@ -802,7 +835,7 @@ export function FileExplorer() {
                   />
                 </div>
               )}
-              {tree.map((node) => (
+              {filteredTree.map((node) => (
                 <TreeNode
                   key={node.path}
                   node={node}

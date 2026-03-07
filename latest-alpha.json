@@ -1,51 +1,51 @@
 {
-  "version": "0.8.4",
-  "notes": "\u4f18\u5316\u4e86 CLI \u53d1\u73b0\u548c\u767b\u5f55\u72b6\u6001\u5171\u4eab\n\u7b2c\u4e09\u65b9 API \u672a\u914d\u6a21\u578b\u6620\u5c04\u65f6\u4f1a\u63d0\u793a\n\u65b0\u589e\u7528\u6237\u5934\u50cf\u548c\u6635\u79f0\u8bbe\u7f6e\n\u4fee\u590d\u591a\u7a97\u53e3\u4e32\u6d88\u606f",
-  "pub_date": "2026-03-04T15:27:15.379Z",
+  "version": "0.8.6",
+  "notes": "See the assets to download and install this version.",
+  "pub_date": "2026-03-07T06:25:26.641Z",
   "platforms": {
-    "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3VhRWVoRng2cFVGWW1mTVFFMFI0UFl2RHc1eVU3U3dSL3JXRHlVQllCZmFoNEx6T0xXdXlTaGRBeWFmVzVtY1p0N09xbkZTYUZtdWlPMTJ5aFduNndVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3NzYxCWZpbGU6VENBbHBoYS5hcHAudGFyLmd6CnJscmx2YjdKNmhUeGswTXRPc2RDWGlDTHA4TzhEbGNqbjQ3S2pOUExOUU1HcjhydDRUaDFSYmRlNDdTZTBkMFVqdUdiS1V1WWo1bElObWt1MXVuTUFnPT0K",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_aarch64.app.tar.gz"
-    },
-    "darwin-aarch64-app": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3VhRWVoRng2cFVGWW1mTVFFMFI0UFl2RHc1eVU3U3dSL3JXRHlVQllCZmFoNEx6T0xXdXlTaGRBeWFmVzVtY1p0N09xbkZTYUZtdWlPMTJ5aFduNndVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3NzYxCWZpbGU6VENBbHBoYS5hcHAudGFyLmd6CnJscmx2YjdKNmhUeGswTXRPc2RDWGlDTHA4TzhEbGNqbjQ3S2pOUExOUU1HcjhydDRUaDFSYmRlNDdTZTBkMFVqdUdiS1V1WWo1bElObWt1MXVuTUFnPT0K",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_aarch64.app.tar.gz"
-    },
-    "linux-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2d4M1pnQkVDQ0lOUTZ6VmZHeHYvNmc4T2NiNk5JZFlzZlFZOUcwMHhWVHJTWWJZK2JnQVRhUWZWamhGOHlES0x1Ry9JakZpZXlKNGZza09WMlNBeGdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3ODU3CWZpbGU6VENBbHBoYV8wLjguNF9hbWQ2NC5BcHBJbWFnZQpyT1JMVmZScXh4dFlZWEtmWTI5aDZuc3k1d0I5NGFKWldIV0tPSkpEWHNGcGZ4WDg2U2VRNEZMT0FUaEFMZ1ZiU0tiSWY2Y3l6c1ZxOG5COW1uV3pDQT09Cg==",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_0.8.4_amd64.AppImage"
-    },
-    "linux-x86_64-appimage": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2d4M1pnQkVDQ0lOUTZ6VmZHeHYvNmc4T2NiNk5JZFlzZlFZOUcwMHhWVHJTWWJZK2JnQVRhUWZWamhGOHlES0x1Ry9JakZpZXlKNGZza09WMlNBeGdBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3ODU3CWZpbGU6VENBbHBoYV8wLjguNF9hbWQ2NC5BcHBJbWFnZQpyT1JMVmZScXh4dFlZWEtmWTI5aDZuc3k1d0I5NGFKWldIV0tPSkpEWHNGcGZ4WDg2U2VRNEZMT0FUaEFMZ1ZiU0tiSWY2Y3l6c1ZxOG5COW1uV3pDQT09Cg==",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_0.8.4_amd64.AppImage"
-    },
-    "linux-x86_64-deb": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2dnc2lCZ0crZzNoY3Uxc0NYSC9XdTFBbTJQWlE0MDJIdGM4K2ZINVhHUWJCdW5rc0xLZWVTWC8yMGtlQ1d1cjArTFNBY1YzUzBDbHVNU3ZUOER5K1FBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3ODU3CWZpbGU6VENBbHBoYV8wLjguNF9hbWQ2NC5kZWIKWXp3dThZSnhvK2lqbFg0MGhYbEM0MUR6cDFUV1VpUy9qZWtCbHNtTzJOM3pub1Vwemp6KytmWHBLazN2N2NXbkpXWGsreE1rZnlBcTZPdUM3NjV3REE9PQo=",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_0.8.4_amd64.deb"
-    },
-    "linux-x86_64-rpm": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2xEeit0NHltM2Z2cFltaitiN3dNQmhIYUdYbEZJQlJxREpGZHowSWJkUHRaMnlwZmNEVDZPSzJGdUVTejdOVjJiVDFLaDVyemZqVERaYzJkKzdQdVFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3ODU3CWZpbGU6VENBbHBoYS0wLjguNC0xLng4Nl82NC5ycG0KbVI0Qmx0L21xamh1RWlLekxydy8zOGlOK2ptOE9CRDVxcmJ3NkFqazJxN3g5NVZBd0dldkNxa0FNd0ZoQlNnTzRVc3AvS2lGbklZdmw4RUFoR0JwQnc9PQo=",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha-0.8.4-1.x86_64.rpm"
-    },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2o0eHRvUWRlb2lXaXhWRlNWTG92RFQxUS9yMUdDWU8zbi9oY1FZeDlhS3YzVDRrNmJlTDAvamsxeXNFNWg2UkZZc3ovdS8xczEwa3BQSzErRXRRWlFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3ODkzCWZpbGU6VENBbHBoYS5hcHAudGFyLmd6CkFjSzhZcWxYWnFVajlmUXNnYy9IV2lGTmZ4M3dJKzhqSnpEK2xSWmkwTW92OEgvQ3JaMUhNZE4rSERwK1kwUHI4NHhuSHdRV0pSSFdMdEFYcU5jY0FRPT0K",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_x64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3NZdHNrWnJGemxZazlaK3hjMEhQcmZ6TlFpZjN0anNJYVNHS2hHUVRMSVIvZFZBQTdaOHFMVTkxOThFSnFzeHVKUjNVa0dXem5LQmJZV2FuYnpBSmdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjE0CWZpbGU6VENBbHBoYS5hcHAudGFyLmd6Ck0yYUR6YlRIR21VTG9BM3NPS3BUak0zZ0M2NkJaaVFLM3RVdmtpa1o0aVlmTCtBc3lWT1p5elNSWGM0R2FsTldsaCtQcXlwSzM3WUI1ay9mSzY1U0JRPT0K",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_x64.app.tar.gz"
     },
     "darwin-x86_64-app": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2o0eHRvUWRlb2lXaXhWRlNWTG92RFQxUS9yMUdDWU8zbi9oY1FZeDlhS3YzVDRrNmJlTDAvamsxeXNFNWg2UkZZc3ovdS8xczEwa3BQSzErRXRRWlFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM3ODkzCWZpbGU6VENBbHBoYS5hcHAudGFyLmd6CkFjSzhZcWxYWnFVajlmUXNnYy9IV2lGTmZ4M3dJKzhqSnpEK2xSWmkwTW92OEgvQ3JaMUhNZE4rSERwK1kwUHI4NHhuSHdRV0pSSFdMdEFYcU5jY0FRPT0K",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_x64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3NZdHNrWnJGemxZazlaK3hjMEhQcmZ6TlFpZjN0anNJYVNHS2hHUVRMSVIvZFZBQTdaOHFMVTkxOThFSnFzeHVKUjNVa0dXem5LQmJZV2FuYnpBSmdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjE0CWZpbGU6VENBbHBoYS5hcHAudGFyLmd6Ck0yYUR6YlRIR21VTG9BM3NPS3BUak0zZ0M2NkJaaVFLM3RVdmtpa1o0aVlmTCtBc3lWT1p5elNSWGM0R2FsTldsaCtQcXlwSzM3WUI1ay9mSzY1U0JRPT0K",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_x64.app.tar.gz"
+    },
+    "darwin-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2lRY25UbzJnYitLbkZtc0I1YkxLNGFaNExiZWlDL1hycG1KZXQrcEttbXdlNi9wSHVXMGtheVo2V1ZHSFR3RFQzWmM4WHdKWVA2WmdnRFJhU2dsSVFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjIxCWZpbGU6VENBbHBoYS5hcHAudGFyLmd6CkVuUkFKZU9xaHBvT2Zkdjhycm1lUU1HQ1MxZE85d3gydUlnTVNmb0FFVG9WN0hIZ1FjcGYvT3dkTjVjVEJyWVpiZVJjaFZUNUdUYTdoVFpXNVNDMEFnPT0K",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_aarch64.app.tar.gz"
+    },
+    "darwin-aarch64-app": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2lRY25UbzJnYitLbkZtc0I1YkxLNGFaNExiZWlDL1hycG1KZXQrcEttbXdlNi9wSHVXMGtheVo2V1ZHSFR3RFQzWmM4WHdKWVA2WmdnRFJhU2dsSVFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjIxCWZpbGU6VENBbHBoYS5hcHAudGFyLmd6CkVuUkFKZU9xaHBvT2Zkdjhycm1lUU1HQ1MxZE85d3gydUlnTVNmb0FFVG9WN0hIZ1FjcGYvT3dkTjVjVEJyWVpiZVJjaFZUNUdUYTdoVFpXNVNDMEFnPT0K",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_aarch64.app.tar.gz"
+    },
+    "linux-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2hrVVNFcTNPSnlGTWVKVitOTE1HL1d4V2U2MER3NlUxOWc4dm14Y2FsRXRNeEN0VkVCZDhXNDhVL0VjM0Z2OEoyVGhCeXkycTNhWTVQcmtUQjJrTGdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjYzCWZpbGU6VENBbHBoYV8wLjguNl9hbWQ2NC5BcHBJbWFnZQpScVF5L2dYOGRZWms0Z3JDbEk2Z0tGWTVjNFptL1orbkY2c29XZTJsckJxWThTcHNkSFAvMi9ET2RuSmJsaGRKZW45RUJGV0R0Rmt5cU1XMUczWitBZz09Cg==",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_0.8.6_amd64.AppImage"
+    },
+    "linux-x86_64-appimage": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM2hrVVNFcTNPSnlGTWVKVitOTE1HL1d4V2U2MER3NlUxOWc4dm14Y2FsRXRNeEN0VkVCZDhXNDhVL0VjM0Z2OEoyVGhCeXkycTNhWTVQcmtUQjJrTGdvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjYzCWZpbGU6VENBbHBoYV8wLjguNl9hbWQ2NC5BcHBJbWFnZQpScVF5L2dYOGRZWms0Z3JDbEk2Z0tGWTVjNFptL1orbkY2c29XZTJsckJxWThTcHNkSFAvMi9ET2RuSmJsaGRKZW45RUJGV0R0Rmt5cU1XMUczWitBZz09Cg==",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_0.8.6_amd64.AppImage"
+    },
+    "linux-x86_64-deb": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3BLNnE0MUZjQlc2Rll0TmhJenFIRGpJY2dyODAwQTRrVVhyRW0wei9MSERuTGtMWGxsS1pZQjA0WmoyeW1SeW9JU3BMck1JTGdBL0NLZEkreHNZUkF3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjYzCWZpbGU6VENBbHBoYV8wLjguNl9hbWQ2NC5kZWIKSml0QnlaVDRiem55TGZHa3VZZVFZVWZOY2pKMExDRjhwemhOUkZHcXdNbWRQakh5RU5xb1ZkOVU2enY1RVVHNHlocVNVSVRJOUpRZWJadlBGMnNlQWc9PQo=",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_0.8.6_amd64.deb"
+    },
+    "linux-x86_64-rpm": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3NWNmJrS3dhWDkvY3JDOWJGUEo0TUFwL1lDc2F0QzErSW1hc2FscWxtMUZaUXhHbTQ0TnVaZUVKQUFWNmpnS1R1YzdPWWczdXp2b0dJZEpXdEh5MkFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NjYzCWZpbGU6VENBbHBoYS0wLjguNi0xLng4Nl82NC5ycG0KMUxLTEErRWNRemRUTmtDK3R5T1daRitxMzlZZkFzVUJKY09jNFNkZnEzWGloMjNqU2wyUHdKWHdhN3FtbDNvSVRIK3pKZVJ5dFR0UzJvanB1M1oxQVE9PQo=",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha-0.8.6-1.x86_64.rpm"
     },
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3IvYmhxd1VLcCtyS3JwbnVidDNOKzFSem9sT1E2ampPZEdRdlhyOHhNTGdXdHpLZFNZR3pRU1pLejArU001aDlURDJKS0lISGJ5eGJ1N2hrVTI5bkFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM4MDMxCWZpbGU6VENBbHBoYV8wLjguNF94NjRfZW4tVVMubXNpClpiSkpzVVFxMStyRUJXQlgxbmk1K2ZLQ0VyN1BzR3UrZ2hWTXY3bGFRRCtQQ0FuSC9EZ1hKWk1hTFdkTFdFZW1OMzErWDJxRzk0VlNlY203SjRla0NRPT0K",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_0.8.4_x64_en-US.msi"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3VZMWxUODJaNlN3cVVsUUZGa0tWenJzam9IQldQNXlaTExnWTl2Z0JjajF5d3dTRmJWQU9HWUZLNmxTOXhNaEtWVlJhSzduOFpKRHJOVkJkdUI3a3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NzIyCWZpbGU6VENBbHBoYV8wLjguNl94NjRfZW4tVVMubXNpCnNxS0ZZbnBHT3JiY05xMTc3R1NJNzRyZmlOUlNCNkhVc0pHZWlZR3B0UDVWeGVweDVHOGl6czdyQzBIdmk5d3dTV2VIOXhuNStabXRIbi8wazd6ZkFnPT0K",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_0.8.6_x64_en-US.msi"
     },
     "windows-x86_64-msi": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3IvYmhxd1VLcCtyS3JwbnVidDNOKzFSem9sT1E2ampPZEdRdlhyOHhNTGdXdHpLZFNZR3pRU1pLejArU001aDlURDJKS0lISGJ5eGJ1N2hrVTI5bkFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM4MDMxCWZpbGU6VENBbHBoYV8wLjguNF94NjRfZW4tVVMubXNpClpiSkpzVVFxMStyRUJXQlgxbmk1K2ZLQ0VyN1BzR3UrZ2hWTXY3bGFRRCtQQ0FuSC9EZ1hKWk1hTFdkTFdFZW1OMzErWDJxRzk0VlNlY203SjRla0NRPT0K",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_0.8.4_x64_en-US.msi"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3VZMWxUODJaNlN3cVVsUUZGa0tWenJzam9IQldQNXlaTExnWTl2Z0JjajF5d3dTRmJWQU9HWUZLNmxTOXhNaEtWVlJhSzduOFpKRHJOVkJkdUI3a3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NzIyCWZpbGU6VENBbHBoYV8wLjguNl94NjRfZW4tVVMubXNpCnNxS0ZZbnBHT3JiY05xMTc3R1NJNzRyZmlOUlNCNkhVc0pHZWlZR3B0UDVWeGVweDVHOGl6czdyQzBIdmk5d3dTV2VIOXhuNStabXRIbi8wazd6ZkFnPT0K",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_0.8.6_x64_en-US.msi"
     },
     "windows-x86_64-nsis": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3BPVlJEQ05zQ3JQcmIzNGVaWHlkbGJ0THZBSEVzOTlFTWwzY2laRFZhZXNiRjVrRys0RHNjM1l2alBhMjNaVVFxQ21lWnYvZ3ZxeGpDRlJmVnlDTXdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyNjM4MDMxCWZpbGU6VENBbHBoYV8wLjguNF94NjQtc2V0dXAuZXhlCmNjWk9QZ25Mdk5kOWRZR2dSeE92VDlhNDBtalpEbTdja29hT3BlSVVmZGVIeGFYYWlvZjZGcThaeFZnMFdWQ3M4cnB3MHFSaVVFeEJweGxkQ2lwSUF3PT0K",
-      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.4-alpha/TCAlpha_0.8.4_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSV2R0V1crT3NxM3RmUG4vUGQxSEQyWjZ4OVQxNVVCVkFSUFU0WVY2Tm9wQ2UvdWNaVzBUK0ZHMzJMTFVGc0dtUnJ6VWZZSTBSZkxqTngzeDlwdDdUbGo3K2w5YjZRVXcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzcyODY0NzIyCWZpbGU6VENBbHBoYV8wLjguNl94NjQtc2V0dXAuZXhlCjExaHN3amIzUGFQd2RoZ0p1N25XdzV4SitMMDlOYzd4MDY2eURpeEh1OEtwSXc4M3dPMm0ybmFLL0NLQWgvVy9WRHR5N0VlSU1meGdyem1mTGVqc0F3PT0K",
+      "url": "https://github.com/yiliqi78/TOKENICODE/releases/download/v0.8.6-alpha/TCAlpha_0.8.6_x64-setup.exe"
     }
   }
 }
