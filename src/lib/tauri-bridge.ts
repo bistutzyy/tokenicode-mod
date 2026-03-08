@@ -238,8 +238,8 @@ export const bridge = {
   getHomeDir: () =>
     invoke<string>('get_home_dir'),
 
-  exportSessionMarkdown: (path: string, outputPath: string) =>
-    invoke<void>('export_session_markdown', { path, outputPath }),
+  exportSessionMarkdown: (path: string, outputPath: string, conversationOnly = false) =>
+    invoke<void>('export_session_markdown', { path, outputPath, conversationOnly }),
 
   exportSessionJson: (path: string, outputPath: string) =>
     invoke<void>('export_session_json', { path, outputPath }),

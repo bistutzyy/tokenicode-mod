@@ -12,6 +12,40 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.8.7] - 2026-03-08
+
+### Added
+
+- **导出纯对话** — 导出 Markdown 时新增「导出纯对话」选项，仅导出用户和 AI 的文字对话，跳过工具调用块和空消息，适合归档和分享。
+
+---
+
+## [0.8.6] - 2026-03-07
+
+### Fixed
+
+- **多会话串流污染 (TK-329)** — 多个会话同时运行时，A 会话的流式输出偶尔出现在 B 会话窗口。修复：stdinId 所有权验证 + per-stdinId 监听器隔离 + 孤儿进程清理。
+
+- **文件树疯狂刷新卡顿 (TK-330)** — 文件监视器对 `.claude`、`.git`、`node_modules` 等无关路径也触发 UI 更新。修复：Rust 层路径过滤 + 前端 rAF 批量节流。
+
+- **会话时间全显示「今天」(TK-332)** — 24 小时内的会话现在显示 HH:mm 而非统一的「今天」。
+
+- **回撤后继续对话失败 (TK-333)** — 回撤后清除 stdinId 和 sessionId，防止 `--resume` 加载旧上下文。
+
+- **「思考中」状态残留 (TK-334)** — 会话变为 idle 时同步清除 streaming 状态。
+
+- **API 添加菜单被裁剪 (TK-335)** — 下拉菜单靠近视口底部时自动上翻 + 滚动兜底。
+
+### Added
+
+- **Windows cygpath 路径修复** — PATH 注入 Git `usr/bin` 目录解决 cygpath 找不到问题；禁用 MSYS2 自动路径转换修复中文路径乱码。
+
+- **大文件 IPC 防卡死** — 超大工具结果（如 24MB PDF）自动截断后再通过 IPC 发送，防止 WebView 冻结。
+
+- **stderr 缓冲区扩容** — BufReader 从 8KB 扩容到 256KB，减少大量 stderr 输出时的系统调用。
+
+---
+
 ## [0.8.5] - 2026-03-06
 
 ### Added

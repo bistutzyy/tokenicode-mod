@@ -95,6 +95,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // ExportMenu
     'export.title': '导出任务',
     'export.markdown': '导出为 Markdown',
+    'export.markdownConversation': '导出纯对话',
     'export.json': '导出为 JSON',
     'export.success': '已导出到',
 
@@ -720,6 +721,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // ExportMenu
     'export.title': 'Export task',
     'export.markdown': 'Export as Markdown',
+    'export.markdownConversation': 'Export conversation only',
     'export.json': 'Export as JSON',
     'export.success': 'Exported to',
 

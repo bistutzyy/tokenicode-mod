@@ -27,6 +27,17 @@ export const CHANGELOG: ChangelogEntry[] = [
     },
     categories: [
       {
+        label: { zh: '新功能', en: 'New' },
+        items: {
+          zh: [
+            '导出纯对话 — 导出 Markdown 时可选择仅导出文字对话，跳过工具调用和空消息',
+          ],
+          en: [
+            'Export conversation only — Export Markdown with text-only option, skipping tool calls and empty messages',
+          ],
+        },
+      },
+      {
         label: { zh: '修复', en: 'Fixes' },
         items: {
           zh: [

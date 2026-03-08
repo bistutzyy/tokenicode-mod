@@ -38,14 +38,16 @@ export function ExportMenu({ sessionPath }: Props) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open, updateMenuPos]);
 
-  const handleExport = async (format: 'markdown' | 'json') => {
+  const handleExport = async (format: 'markdown' | 'markdown-conversation' | 'json') => {
     if (!sessionPath) return;
     setOpen(false);
 
-    const ext = format === 'markdown' ? 'md' : 'json';
-    const filterName = format === 'markdown' ? 'Markdown' : 'JSON';
+    const isMarkdown = format === 'markdown' || format === 'markdown-conversation';
+    const ext = isMarkdown ? 'md' : 'json';
+    const filterName = isMarkdown ? 'Markdown' : 'JSON';
     const timestamp = new Date().toISOString().slice(0, 10);
-    const defaultName = `${(sessionPath.split(/[\\/]/).pop() || 'export').replace('.jsonl', '')}_${timestamp}.${ext}`;
+    const suffix = format === 'markdown-conversation' ? '_conversation' : '';
+    const defaultName = `${(sessionPath.split(/[\\/]/).pop() || 'export').replace('.jsonl', '')}${suffix}_${timestamp}.${ext}`;
 
     const outputPath = await save({
       defaultPath: defaultName,
@@ -54,8 +56,8 @@ export function ExportMenu({ sessionPath }: Props) {
     if (!outputPath) return;
 
     try {
-      if (format === 'markdown') {
-        await bridge.exportSessionMarkdown(sessionPath, outputPath);
+      if (isMarkdown) {
+        await bridge.exportSessionMarkdown(sessionPath, outputPath, format === 'markdown-conversation');
       } else {
         await bridge.exportSessionJson(sessionPath, outputPath);
       }
@@ -103,6 +105,23 @@ export function ExportMenu({ sessionPath }: Props) {
               <path d="M5 9h6M5 12h3" />
             </svg>
             {t('export.markdown')}
+          </button>
+          <button
+            onClick={() => handleExport('markdown-conversation')}
+            className="w-full flex items-center gap-2.5 px-3 py-2
+              text-sm text-text-primary hover:bg-bg-secondary
+              transition-smooth text-left"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              className="flex-shrink-0 text-text-tertiary">
+              <path d="M3 1h7l3 3v9a2 2 0 01-2 2H3a2 2 0 01-2-2V3a2 2 0 012-2z" />
+              <path d="M10 1v3h3" />
+              <circle cx="5" cy="9" r="1" fill="currentColor" stroke="none" />
+              <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+              <path d="M7.5 9h4M7.5 12h3" />
+            </svg>
+            {t('export.markdownConversation')}
           </button>
           <button
             onClick={() => handleExport('json')}
