@@ -19,11 +19,11 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.8.6',
-    date: '2026-03-07',
+    version: '0.8.7',
+    date: '2026-03-08',
     highlights: {
-      zh: ['多会话稳定性大幅提升，修复 6 个核心 Bug'],
-      en: ['Major multi-session stability improvements, 6 core bug fixes'],
+      zh: ['新增导出纯对话功能'],
+      en: ['New conversation-only export'],
     },
     categories: [
       {
@@ -37,6 +37,16 @@ export const CHANGELOG: ChangelogEntry[] = [
           ],
         },
       },
+    ],
+  },
+  {
+    version: '0.8.6',
+    date: '2026-03-07',
+    highlights: {
+      zh: ['多会话稳定性大幅提升，修复 6 个核心 Bug'],
+      en: ['Major multi-session stability improvements, 6 core bug fixes'],
+    },
+    categories: [
       {
         label: { zh: '修复', en: 'Fixes' },
         items: {
