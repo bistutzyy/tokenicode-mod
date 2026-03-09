@@ -1,6 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
@@ -196,8 +195,56 @@ const SANITIZE_SCHEMA = {
   },
 };
 
-// Stable plugin arrays — created once, never cause re-renders
-const REMARK_PLUGINS = [remarkGfm];
+type RemarkPlugin = (typeof import('remark-gfm'))['default'];
+
+const EMPTY_REMARK_PLUGINS: RemarkPlugin[] = [];
+let cachedRemarkPlugins: RemarkPlugin[] | null = null;
+let remarkPluginsPromise: Promise<RemarkPlugin[]> | null = null;
+let warnedAboutGfmFallback = false;
+
+function supportsRemarkGfmRegex(): boolean {
+  try {
+    // remark-gfm's autolink-literal dependency uses this exact regex shape.
+    // Older WebKit parses `(?<=` as an invalid group specifier and crashes
+    // during module evaluation, so we gate the import on syntax support.
+    void new RegExp(
+      '(?<=^|\\s|\\p{P}|\\p{S})([-.\\w+]+)@([-\\w]+(?:\\.[-\\w]+)+)',
+      'gu',
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function loadRemarkPlugins(): Promise<RemarkPlugin[]> {
+  if (cachedRemarkPlugins) return cachedRemarkPlugins;
+
+  if (!supportsRemarkGfmRegex()) {
+    if (!warnedAboutGfmFallback) {
+      warnedAboutGfmFallback = true;
+      console.warn('[TOKENICODE] remark-gfm disabled: current JS runtime does not support its regex syntax');
+    }
+    cachedRemarkPlugins = EMPTY_REMARK_PLUGINS;
+    return cachedRemarkPlugins;
+  }
+
+  if (!remarkPluginsPromise) {
+    remarkPluginsPromise = import('remark-gfm')
+      .then((mod) => {
+        cachedRemarkPlugins = [mod.default];
+        return cachedRemarkPlugins;
+      })
+      .catch((error) => {
+        console.warn('[TOKENICODE] failed to load remark-gfm, falling back to basic markdown', error);
+        cachedRemarkPlugins = EMPTY_REMARK_PLUGINS;
+        return cachedRemarkPlugins;
+      });
+  }
+
+  return remarkPluginsPromise;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const REHYPE_PLUGINS: any[] = [rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeHighlight];
 
@@ -205,6 +252,20 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, classN
   const t = useT();
   const workingDirectory = useSettingsStore((s) => s.workingDirectory);
   const resolveBase = basePath || workingDirectory || '';
+  const [remarkPlugins, setRemarkPlugins] = useState<RemarkPlugin[]>(() => cachedRemarkPlugins ?? EMPTY_REMARK_PLUGINS);
+
+  useEffect(() => {
+    if (cachedRemarkPlugins !== null) return;
+
+    let cancelled = false;
+    loadRemarkPlugins().then((plugins) => {
+      if (!cancelled) setRemarkPlugins(plugins);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Pre-process: wrap bare file paths in backticks so `code` handler makes them clickable
   const processedContent = useMemo(() => wrapBareFilePaths(content), [content]);
@@ -362,7 +423,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, classN
       prose-headings:text-text-primary prose-a:text-accent
       prose-strong:text-text-primary ${className || ''}`}>
       <Markdown
-        remarkPlugins={REMARK_PLUGINS}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={REHYPE_PLUGINS}
         components={components}
       >
