@@ -19,6 +19,29 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.8',
+    date: '2026-03-09',
+    highlights: {
+      zh: ['多会话隔离加固，修复 Markdown 渲染兼容性'],
+      en: ['Multi-session isolation hardening, Markdown rendering compatibility fix'],
+    },
+    categories: [
+      {
+        label: { zh: '修复', en: 'Fixes' },
+        items: {
+          zh: [
+            '多会话隔离 — 修复临时 ID 污染会话列表和进程映射泄漏的问题',
+            'Markdown 渲染 — 修复旧版 macOS 上打开聊天可能白屏的问题',
+          ],
+          en: [
+            'Multi-session isolation — Fix temporary ID polluting session list and process mapping leak',
+            'Markdown rendering — Fix potential white screen on older macOS when opening chats',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.8.7',
     date: '2026-03-08',
     highlights: {
