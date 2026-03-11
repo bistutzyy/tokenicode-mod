@@ -552,6 +552,35 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     set({ sessionCache: next });
   },
 
+  updatePartialThinkingInCache: (tabId, thinking) => {
+    const cache = get().sessionCache;
+    const snapshot = cache.get(tabId);
+    if (!snapshot) {
+      const next = new Map(cache);
+      next.set(tabId, {
+        messages: [],
+        isStreaming: true,
+        partialText: '',
+        partialThinking: thinking,
+        sessionStatus: 'running',
+        sessionMeta: {},
+        activityStatus: { phase: 'thinking' as ActivityPhase },
+        inputDraft: '',
+        pendingAttachments: [],
+        pendingUserMessages: [],
+      });
+      set({ sessionCache: next });
+      return;
+    }
+    const next = new Map(cache);
+    next.set(tabId, {
+      ...snapshot,
+      partialThinking: snapshot.partialThinking + thinking,
+      isStreaming: true,
+    });
+    set({ sessionCache: next });
+  },
+
   setStatusInCache: (tabId, status) => {
     const cache = get().sessionCache;
     const snapshot = cache.get(tabId);
