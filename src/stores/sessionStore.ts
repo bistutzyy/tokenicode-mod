@@ -22,7 +22,7 @@ function saveCustomPreviewsLocal(map: Record<string, string>) {
 /** Persist the last active session ID so app restart can auto-restore */
 function saveLastSessionId(id: string | null) {
   if (id && !id.startsWith('draft_')) {
-    localStorage.setItem(LAST_SESSION_KEY, id);
+    sessionStorage.setItem(LAST_SESSION_KEY, id);
   }
 }
 
