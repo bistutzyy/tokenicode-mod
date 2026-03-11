@@ -300,6 +300,25 @@ fn find_claude_binary() -> Option<String> {
             }
         }
 
+        // 2b. Native binary install (~/.claude/local/claude)
+        // This is where `curl -fsSL https://claude.ai/install.sh | bash` puts it.
+        // Prefer native over npm to avoid Node.js version compatibility issues
+        // (e.g. --sdk-url bug on Node 22, see anthropics/claude-code#30774).
+        #[cfg(not(target_os = "windows"))]
+        {
+            let native = home.join(".claude/local/claude");
+            if is_valid_executable(&native) {
+                return Some(native.to_string_lossy().to_string());
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let native = home.join(".claude\\local\\claude.exe");
+            if is_valid_executable(&native) {
+                return Some(native.to_string_lossy().to_string());
+            }
+        }
+
         // 3. Common global install paths
         #[cfg(target_os = "windows")]
         {
