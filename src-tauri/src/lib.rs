@@ -2029,6 +2029,7 @@ async fn respond_permission(
 #[tauri::command]
 async fn send_control_request(
     stdin_mgr: State<'_, StdinManager>,
+    bypass_modes: State<'_, BypassModeMap>,
     session_id: String,
     subtype: String,
     payload: Value,
@@ -2042,6 +2043,8 @@ async fn send_control_request(
                 .and_then(|v| v.as_str())
                 .ok_or("Missing 'mode' in payload")?
                 .to_string();
+            // Sync bypass flag so stdout reader uses updated mode
+            bypass_modes.set_bypass(&session_id, mode == "bypassPermissions").await;
             ControlRequest::set_permission_mode(mode)
         }
         "set_model" => {
