@@ -5878,6 +5878,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(ProcessManager::new())
         .manage(StdinManager::new())
+        .manage(BypassModeMap::new())
         .manage(WatcherManager::default())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
