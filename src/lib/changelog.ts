@@ -19,6 +19,31 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.11',
+    date: '2026-03-12',
+    highlights: {
+      zh: ['修复切标签页后聊天记录丢失的严重 Bug'],
+      en: ['Fixed critical bug: chat history lost after switching tabs'],
+    },
+    categories: [
+      {
+        label: { zh: '修复', en: 'Fixes' },
+        items: {
+          zh: [
+            '修复切标签页后聊天记录丢失 — 后台缓存方法不再创建空快照覆盖真实历史',
+            'LRU 缓存淘汰保护正在执行的会话 — CLI 压缩上下文后切回不再只剩末尾几条',
+            '空快照安全网 — 检测到空缓存快照时自动回退到磁盘加载完整历史',
+          ],
+          en: [
+            'Fixed chat history loss on tab switch — background cache methods no longer create empty snapshots that overwrite real history',
+            'LRU cache eviction protects active streaming sessions — switching back after CLI context compaction no longer shows only last few messages',
+            'Empty snapshot safety net — auto-fallback to disk load when detecting empty cache snapshots',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.8.10',
     date: '2026-03-11',
     highlights: {

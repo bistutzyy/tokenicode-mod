@@ -430,14 +430,19 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       pendingUserMessages: [...pendingUserMessages],
     });
     // P1-5: LRU eviction — keep at most 8 cached sessions (reduced from 20 to limit memory)
+    // Fix: never evict sessions that are actively streaming — their disk
+    // JSONL may have been compacted, so the cache is the only source of full history
     const MAX_CACHE = 8;
     if (next.size > MAX_CACHE) {
       const keysIter = next.keys();
       while (next.size > MAX_CACHE) {
         const oldest = keysIter.next().value;
-        if (oldest !== undefined) next.delete(oldest);
-        else break;
+        if (oldest === undefined) break;
+        const entry = next.get(oldest);
+        if (entry?.isStreaming || entry?.sessionStatus === 'running') continue; // protect active sessions
+        next.delete(oldest);
       }
+      // If all candidates are streaming, allow cache to exceed MAX_CACHE
     }
     set({ sessionCache: next });
   },
@@ -446,6 +451,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const cache = get().sessionCache;
     const snapshot = cache.get(tabId);
     if (!snapshot) return false;
+    // Safety net: if snapshot has zero messages but this is a persisted session
+    // (has a disk path), treat as cache miss → caller falls back to disk load
+    if (snapshot.messages.length === 0 && !snapshot.isStreaming && !snapshot.partialText) {
+      const session = useSessionStore.getState().sessions.find((s) => s.id === tabId);
+      if (session?.path) {
+        const next = new Map(cache);
+        next.delete(tabId);
+        set({ sessionCache: next });
+        return false;
+      }
+    }
     // P1-5: Refresh LRU position on access (delete + re-insert moves to end)
     const next = new Map(cache);
     next.delete(tabId);
@@ -491,24 +507,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   addMessageToCache: (tabId, message) => {
     const cache = get().sessionCache;
     const snapshot = cache.get(tabId);
-    const next = new Map(cache);
     if (!snapshot) {
-      // Initialize cache for sessions that were moved to background before first save
-      next.set(tabId, {
-        messages: [message],
-        isStreaming: false,
-        partialText: '',
-        partialThinking: '',
-        sessionStatus: 'running',
-        sessionMeta: {},
-        activityStatus: { phase: 'idle' as ActivityPhase },
-        inputDraft: '',
-        pendingAttachments: [],
-        pendingUserMessages: [],
-      });
-      set({ sessionCache: next });
+      // Skip if no cache entry — creating a snapshot with only this single message
+      // risks losing real history if the entry was LRU-evicted.
+      // The disk load fallback will recover full history.
       return;
     }
+    const next = new Map(cache);
     // De-duplicate: update existing message if ID matches
     const existingIdx = snapshot.messages.findIndex((m) => m.id === message.id);
     const messages = existingIdx !== -1
@@ -526,21 +531,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const cache = get().sessionCache;
     const snapshot = cache.get(tabId);
     if (!snapshot) {
-      // Initialize cache with the partial text
-      const next = new Map(cache);
-      next.set(tabId, {
-        messages: [],
-        isStreaming: true,
-        partialText: text,
-        partialThinking: '',
-        sessionStatus: 'running',
-        sessionMeta: {},
-        activityStatus: { phase: 'idle' as ActivityPhase },
-        inputDraft: '',
-        pendingAttachments: [],
-        pendingUserMessages: [],
-      });
-      set({ sessionCache: next });
+      // Skip if no cache entry — creating messages:[] here risks
+      // overwriting real history if the entry was LRU-evicted.
       return;
     }
     const next = new Map(cache);
@@ -556,20 +548,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const cache = get().sessionCache;
     const snapshot = cache.get(tabId);
     if (!snapshot) {
-      const next = new Map(cache);
-      next.set(tabId, {
-        messages: [],
-        isStreaming: true,
-        partialText: '',
-        partialThinking: thinking,
-        sessionStatus: 'running',
-        sessionMeta: {},
-        activityStatus: { phase: 'thinking' as ActivityPhase },
-        inputDraft: '',
-        pendingAttachments: [],
-        pendingUserMessages: [],
-      });
-      set({ sessionCache: next });
+      // Skip if no cache entry — creating messages:[] here risks
+      // overwriting real history if the entry was LRU-evicted.
       return;
     }
     const next = new Map(cache);
@@ -586,23 +566,12 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const snapshot = cache.get(tabId);
     // Also sync running state indicator
     useSessionStore.getState().setSessionRunning(tabId, status === 'running');
-    const next = new Map(cache);
     if (!snapshot) {
-      next.set(tabId, {
-        messages: [],
-        isStreaming: false,
-        partialText: '',
-        partialThinking: '',
-        sessionStatus: status,
-        sessionMeta: {},
-        activityStatus: { phase: (status === 'running' ? 'thinking' : status) as ActivityPhase },
-        inputDraft: '',
-        pendingAttachments: [],
-        pendingUserMessages: [],
-      });
-      set({ sessionCache: next });
+      // Skip if no cache entry — creating messages:[] here would overwrite
+      // real data if the cache was LRU-evicted.
       return;
     }
+    const next = new Map(cache);
     next.set(tabId, {
       ...snapshot,
       sessionStatus: status,

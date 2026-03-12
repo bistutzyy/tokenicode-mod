@@ -4,11 +4,13 @@ All notable changes to TOKENICODE will be documented in this file.
 
 本文件记录 TOKENICODE 的所有重要更新。
 
-> **双版本管理**：标记 `[Alpha-only]` 的条目仅影响 TCAlpha 内测版，稳定版发布时跳过。代码层面这些修复仍会合入 stable（防御性编程），但不出现在稳定版发行说明中。
-
 ---
 
 ## [Unreleased]
+
+### Changed
+
+- **Updater 下载源优先级调整** — 自有服务器 `herear.cn:8443` 作为第一优先级，GitHub 兜底，Gitee 仅保留 updater JSON。解决 Gitee 容量限制和私有仓库下载认证问题。
 
 ---
 
