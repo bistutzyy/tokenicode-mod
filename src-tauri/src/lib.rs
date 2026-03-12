@@ -1337,6 +1337,7 @@ async fn start_claude_session(
     app: AppHandle,
     state: State<'_, ProcessManager>,
     stdin_mgr: State<'_, StdinManager>,
+    bypass_modes: State<'_, BypassModeMap>,
     params: StartSessionParams,
 ) -> Result<SessionInfo, String> {
     let session_id = params
