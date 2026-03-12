@@ -1,7 +1,7 @@
 mod commands;
 mod protocol;
 
-use commands::{ManagedProcess, ProcessManager, SessionInfo, StartSessionParams, StdinManager};
+use commands::{BypassModeMap, ManagedProcess, ProcessManager, SessionInfo, StartSessionParams, StdinManager};
 // protocol module kept for ControlRequest (send_control_request) and tests
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
