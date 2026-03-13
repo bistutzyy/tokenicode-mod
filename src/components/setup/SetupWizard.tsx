@@ -118,16 +118,26 @@ export function SetupWizard() {
   }, []);
 
   // Phase label for download progress
-  const phaseLabel = downloadPhase === 'version' ? t('setup.fetchingVersion') || 'Fetching version...'
-    : downloadPhase === 'downloading' ? t('setup.downloading') || 'Downloading...'
-    : downloadPhase === 'installing' ? t('setup.finalizing') || 'Finalizing...'
-    : downloadPhase === 'node_downloading' ? t('setup.downloadingNode') || 'Downloading Node.js...'
-    : downloadPhase === 'node_extracting' ? t('setup.extractingNode') || 'Extracting Node.js...'
-    : downloadPhase === 'node_complete' ? t('setup.preparingEnv') || 'Preparing environment...'
-    : downloadPhase === 'npm_fallback' ? t('setup.installingCli') || 'Installing CLI via npm...'
-    : downloadPhase === 'git_downloading' ? t('setup.downloadingGit') || 'Downloading Git...'
-    : downloadPhase === 'git_extracting' ? t('setup.extractingGit') || 'Installing Git...'
-    : downloadPhase === 'git_complete' ? t('setup.preparingEnv') || 'Preparing environment...'
+  const phaseLabel =
+    // Native binary install phases (primary path)
+    downloadPhase === 'native_version' ? t('setup.nativeVersion')
+    : downloadPhase === 'native_manifest' ? t('setup.nativeManifest')
+    : downloadPhase === 'native_download' ? t('setup.nativeDownload')
+    : downloadPhase === 'native_verify' ? t('setup.nativeVerify')
+    : downloadPhase === 'native_install' ? t('setup.nativeInstall')
+    // npm fallback phases
+    : downloadPhase === 'npm_fallback' ? t('setup.npmFallback')
+    : downloadPhase === 'node_downloading' ? t('setup.downloadingNode')
+    : downloadPhase === 'node_extracting' ? t('setup.extractingNode')
+    : downloadPhase === 'node_complete' ? t('setup.preparingEnv')
+    : downloadPhase === 'installing' ? t('setup.nativeInstall')
+    // Windows git phases
+    : downloadPhase === 'git_downloading' ? t('setup.downloadingGit')
+    : downloadPhase === 'git_extracting' ? t('setup.extractingGit')
+    : downloadPhase === 'git_complete' ? t('setup.preparingEnv')
+    // Legacy phases
+    : downloadPhase === 'version' ? t('setup.nativeVersion')
+    : downloadPhase === 'downloading' ? t('setup.nativeDownload')
     : '';
 
   return (

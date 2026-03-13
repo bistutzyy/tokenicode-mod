@@ -15,7 +15,7 @@ export function CliTab() {
   const [errorMsg, setErrorMsg] = useState('');
   const [gitBashMissing, setGitBashMissing] = useState(false);
   const [downloadPercent, setDownloadPercent] = useState(0);
-  const [phase, setPhase] = useState<'idle' | 'downloading' | 'configuring' | 'npm_fallback' | 'node_downloading' | 'node_extracting' | 'git_downloading' | 'git_extracting'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'downloading' | 'configuring' | 'npm_fallback' | 'node_downloading' | 'node_extracting' | 'git_downloading' | 'git_extracting' | 'native_version' | 'native_manifest' | 'native_download' | 'native_verify' | 'native_install'>('idle');
 
   // Auto-check on mount
   useEffect(() => {
@@ -59,17 +59,21 @@ export function CliTab() {
     const { onDownloadProgress } = await import('../../lib/tauri-bridge');
     const unlisten = await onDownloadProgress((event) => {
       setDownloadPercent(event.percent);
-      if (event.phase === 'git_downloading') {
+      const p = event.phase;
+      if (p === 'native_version' || p === 'native_manifest' || p === 'native_download'
+        || p === 'native_verify' || p === 'native_install') {
+        setPhase(p);
+      } else if (p === 'git_downloading') {
         setPhase('git_downloading');
-      } else if (event.phase === 'git_extracting') {
+      } else if (p === 'git_extracting') {
         setPhase('git_extracting');
-      } else if (event.phase === 'npm_fallback') {
+      } else if (p === 'npm_fallback') {
         setPhase('npm_fallback');
-      } else if (event.phase === 'node_downloading') {
+      } else if (p === 'node_downloading') {
         setPhase('node_downloading');
-      } else if (event.phase === 'node_extracting') {
+      } else if (p === 'node_extracting') {
         setPhase('node_extracting');
-      } else if (event.phase === 'complete' || event.percent >= 100) {
+      } else if (p === 'complete' || event.percent >= 100) {
         setPhase('configuring');
       }
     });
@@ -175,26 +179,25 @@ export function CliTab() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[13px] text-text-muted">
-              {phase === 'configuring'
-                ? t('cli.configuring')
-                : phase === 'npm_fallback'
-                  ? t('cli.npmFallback')
-                  : phase === 'node_downloading'
-                    ? t('setup.downloadingNode')
-                    : phase === 'node_extracting'
-                      ? t('setup.extractingNode')
-                      : phase === 'git_downloading'
-                        ? t('setup.downloadingGit')
-                        : phase === 'git_extracting'
-                          ? t('setup.extractingGit')
-                          : t('cli.installing')}
+              {phase === 'native_version' ? t('setup.nativeVersion')
+                : phase === 'native_manifest' ? t('setup.nativeManifest')
+                : phase === 'native_download' ? t('setup.nativeDownload')
+                : phase === 'native_verify' ? t('setup.nativeVerify')
+                : phase === 'native_install' ? t('setup.nativeInstall')
+                : phase === 'configuring' ? t('cli.configuring')
+                : phase === 'npm_fallback' ? t('setup.npmFallback')
+                : phase === 'node_downloading' ? t('setup.downloadingNode')
+                : phase === 'node_extracting' ? t('setup.extractingNode')
+                : phase === 'git_downloading' ? t('setup.downloadingGit')
+                : phase === 'git_extracting' ? t('setup.extractingGit')
+                : t('cli.installing')}
             </span>
-            {(phase === 'downloading' || phase === 'node_downloading' || phase === 'git_downloading') && downloadPercent > 0 && (
+            {(phase === 'native_download' || phase === 'downloading' || phase === 'node_downloading' || phase === 'git_downloading') && downloadPercent > 0 && (
               <span className="text-[13px] text-text-tertiary">{downloadPercent}%</span>
             )}
           </div>
           <div className="w-full h-2 rounded-full bg-bg-tertiary overflow-hidden">
-            {(phase === 'downloading' || phase === 'node_downloading' || phase === 'git_downloading') && downloadPercent > 0 ? (
+            {(phase === 'native_download' || phase === 'downloading' || phase === 'node_downloading' || phase === 'git_downloading') && downloadPercent > 0 ? (
               <div
                 className="h-full bg-accent rounded-full transition-all duration-300"
                 style={{ width: `${downloadPercent}%` }}

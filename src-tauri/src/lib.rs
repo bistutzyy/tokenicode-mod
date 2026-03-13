@@ -4494,15 +4494,278 @@ async fn install_cli_via_npm(app: &AppHandle, china: bool) -> Result<(), String>
     Err(last_err)
 }
 
-/// Install the Claude CLI via npm with network-aware mirror selection:
-/// 0. Detect network environment (China vs Global)
-/// 1. (Windows) Ensure git-bash is available — auto-install PortableGit if missing
-/// 2. Ensure npm is available — download Node.js locally if needed
-/// 3. Install CLI via npm with region-appropriate registry mirrors
+/// GCS bucket base URL for Claude Code native binary releases.
+const CLAUDE_CODE_GCS_BUCKET: &str = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases";
+
+/// China mirror base URL for Claude Code native binary releases (herear.cn).
+const CLAUDE_CODE_CHINA_MIRROR: &str = "https://herear.cn:8443/releases/claude-code";
+
+/// Detect the current platform string for Claude Code binary downloads.
+fn detect_claude_platform() -> Result<&'static str, String> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "aarch64") => Ok("darwin-arm64"),
+        ("macos", "x86_64") => Ok("darwin-x64"),
+        ("windows", "x86_64") => Ok("win32-x64"),
+        ("windows", "aarch64") => Ok("win32-arm64"),
+        ("linux", "x86_64") => Ok("linux-x64"),
+        ("linux", "aarch64") => Ok("linux-arm64"),
+        (os, arch) => Err(format!("Unsupported platform: {}-{}", os, arch)),
+    }
+}
+
+/// Download Claude Code as a native binary and run `claude install` to place it
+/// in the official directory (~/.local/share/claude/versions/ on Unix,
+/// equivalent on Windows). This ensures the binary is at the same path
+/// as the official installer (`curl -fsSL https://claude.ai/install.sh | bash`).
+async fn install_cli_via_native_binary(app: &AppHandle, china: bool) -> Result<(), String> {
+    let platform = detect_claude_platform()?;
+
+    #[cfg(target_os = "windows")]
+    let bin_name = "claude.exe";
+    #[cfg(not(target_os = "windows"))]
+    let bin_name = "claude";
+
+    let mirrors: Vec<&str> = if china {
+        vec![CLAUDE_CODE_CHINA_MIRROR, CLAUDE_CODE_GCS_BUCKET]
+    } else {
+        vec![CLAUDE_CODE_GCS_BUCKET, CLAUDE_CODE_CHINA_MIRROR]
+    };
+
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .timeout(std::time::Duration::from_secs(600))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    // Phase 1: Get latest version
+    let _ = app.emit(
+        "setup:download:progress",
+        serde_json::json!({
+            "downloaded": 0, "total": 0, "percent": 5, "phase": "native_version"
+        }),
+    );
+
+    let mut version = String::new();
+    for mirror in &mirrors {
+        let url = format!("{}/latest", mirror);
+        eprintln!("Fetching latest version from {}", url);
+        match client.get(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                if let Ok(text) = resp.text().await {
+                    let v = text.trim().to_string();
+                    if !v.is_empty() && v.starts_with(|c: char| c.is_ascii_digit()) {
+                        version = v;
+                        eprintln!("Latest version: {}", version);
+                        break;
+                    }
+                }
+            }
+            Ok(resp) => eprintln!("Version check failed ({}): HTTP {}", mirror, resp.status()),
+            Err(e) => eprintln!("Version check failed ({}): {}", mirror, e),
+        }
+    }
+    if version.is_empty() {
+        return Err("Could not determine latest Claude Code version from any mirror".to_string());
+    }
+
+    // Phase 2: Download manifest for SHA256
+    let _ = app.emit(
+        "setup:download:progress",
+        serde_json::json!({
+            "downloaded": 0, "total": 0, "percent": 10, "phase": "native_manifest"
+        }),
+    );
+
+    let mut expected_sha: Option<String> = None;
+    for mirror in &mirrors {
+        let url = format!("{}/{}/manifest.json", mirror, version);
+        if let Ok(resp) = client.get(&url).send().await {
+            if resp.status().is_success() {
+                if let Ok(manifest) = resp.json::<serde_json::Value>().await {
+                    if let Some(sha) = manifest
+                        .get("platforms")
+                        .and_then(|ps| ps.get(platform))
+                        .and_then(|p| p.get("checksum"))
+                        .and_then(|s| s.as_str())
+                    {
+                        expected_sha = Some(sha.to_string());
+                        eprintln!("Got SHA256 for {}: {}...", platform, &sha[..12.min(sha.len())]);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Phase 3: Download binary
+    let _ = app.emit(
+        "setup:download:progress",
+        serde_json::json!({
+            "downloaded": 0, "total": 0, "percent": 15, "phase": "native_download"
+        }),
+    );
+
+    let download_dir = dirs::home_dir()
+        .ok_or("Cannot determine home directory")?
+        .join(".claude")
+        .join("downloads");
+    std::fs::create_dir_all(&download_dir)
+        .map_err(|e| format!("Failed to create download dir: {}", e))?;
+
+    let download_path = download_dir.join(format!("claude-{}-{}", version, platform));
+    #[cfg(target_os = "windows")]
+    let download_path = download_dir.join(format!("claude-{}-{}.exe", version, platform));
+
+    let mut last_err = String::new();
+    for mirror in &mirrors {
+        let url = format!("{}/{}/{}/{}", mirror, version, platform, bin_name);
+        eprintln!("Downloading {} (~190MB)...", url);
+
+        match client.get(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                let total_size = resp.content_length().unwrap_or(0);
+                let mut downloaded: u64 = 0;
+                let mut stream = resp.bytes_stream();
+                let mut file = tokio::fs::File::create(&download_path)
+                    .await
+                    .map_err(|e| format!("Failed to create download file: {}", e))?;
+
+                use tokio::io::AsyncWriteExt;
+                while let Some(chunk) = stream.next().await {
+                    match chunk {
+                        Ok(bytes) => {
+                            file.write_all(&bytes)
+                                .await
+                                .map_err(|e| format!("Write error: {}", e))?;
+                            downloaded += bytes.len() as u64;
+                            if total_size > 0 {
+                                let pct = 15 + (downloaded as f64 / total_size as f64 * 70.0) as u64;
+                                let _ = app.emit(
+                                    "setup:download:progress",
+                                    serde_json::json!({
+                                        "downloaded": downloaded,
+                                        "total": total_size,
+                                        "percent": pct.min(85),
+                                        "phase": "native_download"
+                                    }),
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            last_err = format!("Stream error from {}: {}", mirror, e);
+                            eprintln!("{}", last_err);
+                            let _ = tokio::fs::remove_file(&download_path).await;
+                            continue;
+                        }
+                    }
+                }
+                file.flush().await.map_err(|e| format!("Flush error: {}", e))?;
+                drop(file);
+
+                eprintln!("Download complete: {} bytes", downloaded);
+
+                // Phase 4: SHA256 verification
+                if let Some(ref expected) = expected_sha {
+                    let _ = app.emit(
+                        "setup:download:progress",
+                        serde_json::json!({
+                            "downloaded": downloaded, "total": total_size, "percent": 88, "phase": "native_verify"
+                        }),
+                    );
+
+                    let file_bytes = std::fs::read(&download_path)
+                        .map_err(|e| format!("Cannot read downloaded file: {}", e))?;
+                    use sha2::Digest;
+                    let actual = format!("{:x}", sha2::Sha256::digest(&file_bytes));
+                    if actual != *expected {
+                        last_err = format!(
+                            "SHA256 mismatch: expected {}... got {}...",
+                            &expected[..12.min(expected.len())],
+                            &actual[..12]
+                        );
+                        eprintln!("{}", last_err);
+                        let _ = std::fs::remove_file(&download_path);
+                        continue;
+                    }
+                    eprintln!("SHA256 verified OK");
+                }
+
+                // Phase 5: Make executable and run `claude install`
+                #[cfg(not(target_os = "windows"))]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ = std::fs::set_permissions(
+                        &download_path,
+                        std::fs::Permissions::from_mode(0o755),
+                    );
+                }
+
+                let _ = app.emit(
+                    "setup:download:progress",
+                    serde_json::json!({
+                        "downloaded": downloaded, "total": total_size, "percent": 92, "phase": "native_install"
+                    }),
+                );
+
+                eprintln!("Running `claude install`...");
+                let install_result = tokio::process::Command::new(download_path.to_string_lossy().to_string())
+                    .args(["install", "--yes"])
+                    .stdin(Stdio::null())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .output()
+                    .await;
+
+                match install_result {
+                    Ok(output) if output.status.success() => {
+                        eprintln!("`claude install` succeeded");
+                        let _ = std::fs::remove_file(&download_path);
+
+                        let _ = app.emit(
+                            "setup:download:progress",
+                            serde_json::json!({
+                                "downloaded": 0, "total": 0, "percent": 100, "phase": "complete"
+                            }),
+                        );
+                        return Ok(());
+                    }
+                    Ok(output) => {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        last_err = format!(
+                            "`claude install` failed (exit {}): stdout={}, stderr={}",
+                            output.status, stdout.trim(), stderr.trim()
+                        );
+                        eprintln!("{}", last_err);
+                        let _ = std::fs::remove_file(&download_path);
+                    }
+                    Err(e) => {
+                        last_err = format!("`claude install` could not run: {}", e);
+                        eprintln!("{}", last_err);
+                        let _ = std::fs::remove_file(&download_path);
+                    }
+                }
+                continue;
+            }
+            Ok(resp) => {
+                last_err = format!("Download failed ({}): HTTP {}", mirror, resp.status());
+                eprintln!("{}", last_err);
+            }
+            Err(e) => {
+                last_err = format!("Download failed ({}): {}", mirror, e);
+                eprintln!("{}", last_err);
+            }
+        }
+    }
+
+    Err(format!("Native binary install failed: {}", last_err))
+}
+
+/// Install the Claude CLI with a two-tier strategy:
+/// 1. Native binary download (official path, zero dependencies)
+/// 2. npm fallback (for edge cases where native download fails)
 #[tauri::command]
 async fn install_claude_cli(app: AppHandle) -> Result<(), String> {
-    // Skip installation if CLI already exists on system.
-    // On Windows, still continue when git-bash is missing because reinstall is the repair path.
     let existing_cli = find_claude_binary();
     #[cfg(target_os = "windows")]
     let can_skip_install = existing_cli.is_some() && find_git_bash().is_some();
@@ -4519,10 +4782,8 @@ async fn install_claude_cli(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    // Phase 0: Detect network environment (used by all subsequent phases)
     let china = is_china_network().await;
 
-    // Phase 1 (Windows only): Ensure git-bash is available
     #[cfg(target_os = "windows")]
     {
         if find_git_bash().is_none() {
@@ -4536,7 +4797,6 @@ async fn install_claude_cli(app: AppHandle) -> Result<(), String> {
             })?;
         }
 
-        // If CLI is already installed (only git-bash was missing), skip download phases
         if find_claude_binary().is_some() {
             eprintln!("CLI already installed, git-bash was the only missing dependency");
             finalize_cli_install_paths(&app);
@@ -4544,7 +4804,20 @@ async fn install_claude_cli(app: AppHandle) -> Result<(), String> {
         }
     }
 
-    // Phase 2: Ensure npm is available
+    // Try native binary first
+    eprintln!("Attempting native binary install...");
+    match install_cli_via_native_binary(&app, china).await {
+        Ok(()) => {
+            eprintln!("Native binary install succeeded");
+            finalize_cli_install_paths(&app);
+            return Ok(());
+        }
+        Err(e) => {
+            eprintln!("Native binary install failed: {}. Falling back to npm...", e);
+        }
+    }
+
+    // Fallback: npm
     let has_npm = is_system_npm_available().await || get_local_node_bin().is_some();
 
     if !has_npm {
@@ -4557,12 +4830,11 @@ async fn install_claude_cli(app: AppHandle) -> Result<(), String> {
         })?;
     }
 
-    // Phase 3: Install CLI via npm
     install_cli_via_npm(&app, china)
         .await
         .map_err(|npm_err| format!("CLI installation failed via npm: {}", npm_err))?;
 
-    eprintln!("CLI installed via npm");
+    eprintln!("CLI installed via npm (fallback)");
     finalize_cli_install_paths(&app);
     Ok(())
 }

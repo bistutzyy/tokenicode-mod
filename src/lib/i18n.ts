@@ -624,6 +624,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'setup.extractingNode': '正在解压 Node.js...',
     'setup.preparingEnv': '正在准备运行环境...',
     'setup.installingCli': '正在通过 npm 安装 CLI...',
+    'setup.nativeVersion': '正在获取最新版本...',
+    'setup.nativeManifest': '正在校验文件信息...',
+    'setup.nativeDownload': '正在下载 Claude Code...',
+    'setup.nativeVerify': '正在验证文件完整性...',
+    'setup.nativeInstall': '正在安装到系统...',
+    'setup.npmFallback': '正在通过备用方式安装...',
 
     // Permission dialog
     'perm.title': '需要文件访问权限',
@@ -1249,6 +1255,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'setup.extractingNode': 'Extracting Node.js...',
     'setup.preparingEnv': 'Preparing runtime environment...',
     'setup.installingCli': 'Installing CLI via npm...',
+    'setup.nativeVersion': 'Fetching latest version...',
+    'setup.nativeManifest': 'Verifying file info...',
+    'setup.nativeDownload': 'Downloading Claude Code...',
+    'setup.nativeVerify': 'Verifying file integrity...',
+    'setup.nativeInstall': 'Installing to system...',
+    'setup.npmFallback': 'Installing via fallback method...',
 
     // Permission dialog
     'perm.title': 'File Access Required',
