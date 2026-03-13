@@ -121,6 +121,7 @@ export interface DownloadProgressEvent {
   total: number;
   percent: number;
   phase: 'version' | 'downloading' | 'installing' | 'complete'
+       | 'native_version' | 'native_manifest' | 'native_download' | 'native_verify' | 'native_install'
        | 'npm_fallback'
        | 'node_downloading' | 'node_extracting' | 'node_complete'
        | 'git_downloading' | 'git_extracting' | 'git_complete';
