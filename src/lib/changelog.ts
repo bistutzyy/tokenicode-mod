@@ -19,6 +19,29 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.13',
+    date: '2026-03-14',
+    highlights: {
+      zh: ['新增原生二进制安装 Claude CLI，无需 Node.js'],
+      en: ['Native binary CLI installation, no Node.js required'],
+    },
+    categories: [
+      {
+        label: { zh: '新功能', en: 'New' },
+        items: {
+          zh: [
+            '支持从 GCS 直接下载 Claude Code 原生二进制，跳过 npm 安装流程',
+            '中国用户自动走 herear.cn 镜像加速，安装失败自动降级到 npm',
+          ],
+          en: [
+            'Download Claude Code native binary directly from GCS, skipping npm installation',
+            'China users auto-routed to herear.cn mirror, falls back to npm on failure',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.8.12',
     date: '2026-03-12',
     highlights: {
