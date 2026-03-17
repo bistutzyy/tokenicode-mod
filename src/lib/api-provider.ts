@@ -19,6 +19,7 @@ export function resolveModelOrError(selectedModel: ModelId): ModelResolution {
   // Map UI model ID to tier
   const tierMap: Record<ModelId, 'opus' | 'sonnet' | 'haiku'> = {
     'claude-opus-4-6': 'opus',
+    'claude-opus-4-6-1m': 'opus',
     'claude-sonnet-4-6': 'sonnet',
     'claude-haiku-4-5-20251001': 'haiku',
   };
@@ -39,9 +40,15 @@ export function resolveModelOrError(selectedModel: ModelId): ModelResolution {
  * When a provider is active, looks up the model mapping for the selected tier.
  * Returns the original model ID if no mapping is configured (silent fallback).
  */
+/** Map internal model IDs to CLI-expected format */
+const CLI_MODEL_MAP: Partial<Record<ModelId, string>> = {
+  'claude-opus-4-6-1m': 'claude-opus-4-6[1m]',
+};
+
 export function resolveModelForProvider(selectedModel: ModelId): string {
   const r = resolveModelOrError(selectedModel);
-  return r.ok ? r.model : selectedModel;
+  const model = r.ok ? r.model : selectedModel;
+  return CLI_MODEL_MAP[model as ModelId] ?? model;
 }
 
 /**

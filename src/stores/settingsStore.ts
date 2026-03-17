@@ -6,7 +6,7 @@ import { persist } from 'zustand/middleware';
 export type Theme = 'light' | 'dark' | 'system';
 export type ColorTheme = 'black' | 'blue' | 'orange' | 'green';
 export type SecondaryPanelTab = 'files' | 'skills';
-export type ModelId = 'claude-opus-4-6' | 'claude-sonnet-4-6' | 'claude-haiku-4-5-20251001';
+export type ModelId = 'claude-opus-4-6' | 'claude-opus-4-6-1m' | 'claude-sonnet-4-6' | 'claude-haiku-4-5-20251001';
 export type SessionMode = 'code' | 'ask' | 'plan' | 'bypass';
 /** CLI permission mode for the SDK control protocol */
 export type CliPermissionMode = 'acceptEdits' | 'default' | 'plan' | 'bypassPermissions';
@@ -27,6 +27,7 @@ export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'max';
 
 export const MODEL_OPTIONS: { id: ModelId; label: string; short: string }[] = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', short: 'Opus 4.6' },
+  { id: 'claude-opus-4-6-1m', label: 'Claude Opus 4.6 (1M)', short: 'Opus 4.6 1M' },
   { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', short: 'Sonnet 4.6' },
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', short: 'Haiku 4.5' },
 ];

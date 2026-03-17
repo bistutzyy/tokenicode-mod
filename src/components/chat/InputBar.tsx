@@ -30,6 +30,7 @@ const THINK_LEVELS: { id: ThinkingLevel; labelKey: string }[] = [
   { id: 'low', labelKey: 'think.low' },
   { id: 'medium', labelKey: 'think.medium' },
   { id: 'high', labelKey: 'think.high' },
+  { id: 'max', labelKey: 'think.max' },
 ];
 
 /** Thinking effort level selector dropdown for the toolbar */
