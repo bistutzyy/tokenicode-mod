@@ -1213,7 +1213,9 @@ export function InputBar() {
 
     // Skip if IME composition is in progress (e.g. Chinese/Japanese input method
     // confirming a candidate with Enter — should NOT send the message)
-    if (e.isComposing || e.keyCode === 229) return;
+    // Triple check: browser API + keyCode fallback + TipTap manual composition tracking
+    // (macOS WebKit/Tauri may fire Enter with isComposing=false during IME confirmation)
+    if (e.isComposing || e.keyCode === 229 || textareaRef.current?.isComposing()) return;
 
     const pendingInteraction = useChatStore.getState().messages.find(
       (m) => ['permission', 'question', 'plan_review'].includes(m.type) && !m.resolved,
