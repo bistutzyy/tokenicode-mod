@@ -1224,10 +1224,12 @@ export function InputBar() {
     if (e.key !== 'Enter') return;
 
     // Skip if IME composition is in progress (e.g. Chinese/Japanese input method
-    // confirming a candidate with Enter — should NOT send the message)
-    // Triple check: browser API + keyCode fallback + TipTap manual composition tracking
-    // (macOS WebKit/Tauri may fire Enter with isComposing=false during IME confirmation)
-    if (e.isComposing || e.keyCode === 229 || textareaRef.current?.isComposing()) return;
+    // confirming a candidate with Enter — should NOT send the message).
+    // Only trust browser-native signals: e.isComposing + keyCode 229.
+    // Previously also checked TipTap's composingRef, but compositionend can be
+    // missed on macOS WebKit (focus change, click outside), leaving composingRef
+    // stuck true and permanently blocking Enter. See issue #66.
+    if (e.isComposing || e.keyCode === 229) return;
 
     const pendingInteraction = useChatStore.getState().messages.find(
       (m) => ['permission', 'question', 'plan_review'].includes(m.type) && !m.resolved,
