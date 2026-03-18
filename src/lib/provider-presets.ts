@@ -6,6 +6,12 @@ export interface PresetProvider {
   extra_env: Record<string, string>;
   /** Default model for all tiers (non-Claude providers) */
   defaultModel?: string;
+  /** Per-tier default models (takes precedence over defaultModel) */
+  defaultModels?: {
+    opus?: string;
+    sonnet?: string;
+    haiku?: string;
+  };
 }
 
 export const PROVIDER_PRESETS: PresetProvider[] = [
@@ -29,7 +35,11 @@ export const PROVIDER_PRESETS: PresetProvider[] = [
     baseUrl: 'https://open.bigmodel.cn/api/anthropic',
     apiFormat: 'anthropic',
     extra_env: {},
-    defaultModel: 'glm-5',
+    defaultModels: {
+      opus: 'glm-5',
+      sonnet: 'glm-5-turbo',
+      haiku: 'glm-4.7',
+    },
   },
   {
     id: 'qwen-coder',

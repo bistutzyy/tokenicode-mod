@@ -46,9 +46,9 @@ export function ProviderManager({ alwaysExpanded = false }: { alwaysExpanded?: b
       baseUrl: preset.baseUrl,
       apiFormat: preset.apiFormat,
       modelMappings: [
-        { tier: 'opus', providerModel: preset.defaultModel || 'claude-opus-4-6' },
-        { tier: 'sonnet', providerModel: preset.defaultModel || 'claude-sonnet-4-6' },
-        { tier: 'haiku', providerModel: preset.defaultModel || 'claude-haiku-4-5-20251001' },
+        { tier: 'opus', providerModel: preset.defaultModels?.opus || preset.defaultModel || 'claude-opus-4-6' },
+        { tier: 'sonnet', providerModel: preset.defaultModels?.sonnet || preset.defaultModel || 'claude-sonnet-4-6' },
+        { tier: 'haiku', providerModel: preset.defaultModels?.haiku || preset.defaultModel || 'claude-haiku-4-5-20251001' },
       ],
       extra_env: { ...preset.extra_env },
       preset: preset.id,
