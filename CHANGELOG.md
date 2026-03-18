@@ -6,6 +6,15 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.8.18] - 2026-03-19
+
+### Fixed
+
+- **stdout UTF-8 切割 panic** — 中文 Provider 响应超 150 字节时日志 preview 切到多字节字符中间，导致流式输出永久中断
+- **MiniMax Provider 配置修正** — thinkingSupport 从 ignored 改为 full，默认模型升级至 M2.7/M2.5/M2.1，新增推荐超时设置
+
+---
+
 ## [0.8.17] - 2026-03-18
 
 ### Added

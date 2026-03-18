@@ -1711,11 +1711,16 @@ async fn start_claude_session(
             // Log first 10 lines with timing to diagnose startup delay
             if line_count <= 10 {
                 let elapsed = spawn_time.elapsed().as_millis();
-                let preview = if line.len() > 150 {
-                    &line[..150]
+                let end = if line.len() > 150 {
+                    let mut i = 150;
+                    while i > 0 && !line.is_char_boundary(i) {
+                        i -= 1;
+                    }
+                    i
                 } else {
-                    &line
+                    line.len()
                 };
+                let preview = &line[..end];
                 eprintln!(
                     "[TOKENICODE:stdout] #{} @{}ms type={} preview={}",
                     line_count,

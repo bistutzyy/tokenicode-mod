@@ -61,13 +61,16 @@ export const PROVIDER_PRESETS: PresetProvider[] = [
     name: 'MiniMax',
     baseUrl: 'https://api.minimaxi.com/anthropic',
     apiFormat: 'anthropic',
-    extra_env: {},
+    extra_env: {
+      API_TIMEOUT_MS: '3000000',
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+    },
     keyUrl: 'https://platform.minimaxi.com/user-center/basic-information/interface-key',
-    thinkingSupport: 'ignored',
+    thinkingSupport: 'full',
     defaultModels: {
-      opus: 'MiniMax-M2.5',
-      sonnet: 'MiniMax-M2.1',
-      haiku: 'MiniMax-M2',
+      opus: 'MiniMax-M2.7',
+      sonnet: 'MiniMax-M2.5',
+      haiku: 'MiniMax-M2.1',
     },
   },
   {
