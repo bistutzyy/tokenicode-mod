@@ -6,6 +6,31 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.8.17] - 2026-03-18
+
+### Added
+
+- **国产大模型 Provider 体系** — 5 家预设（Anthropic 官方 + 智谱 GLM + Kimi + MiniMax + 通义千问），全部走 Anthropic 协议
+- **获取 Key 快捷链接** — 每个预设旁显示"获取 Key →"，一键跳转对应平台的 API Key 管理页
+- **Thinking 联动提示** — Provider 级标记，不支持 thinking 的供应商显示提示
+- **自定义模型映射** — 支持 Model ID → Provider Model 直接映射
+- **设置页模型名映射** — 默认模型选择联动 Provider 映射
+
+### Fixed
+
+- **输入框回车键无法发送** — macOS WebKit 下 IME 状态卡住修复
+- **GLM 模型重复显示** — ModelSelector 自动去重
+- **Thinking signature 自动重试** — 覆盖手动切换 Provider 场景
+- **CLI 搜索链路重构** — 两阶段搜索 + ENOENT spawn 处理
+
+### Changed
+
+- **Provider 预设列表** — 全部走 Anthropic 协议，per-tier 模型映射
+- **允许重复添加预设** — 多 API Key 场景支持
+- **弹出菜单透明度修复**
+
+---
+
 ## [0.8.16] - 2026-03-18
 
 ### Changed
