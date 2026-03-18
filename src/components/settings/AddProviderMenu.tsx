@@ -54,8 +54,6 @@ export function AddProviderMenu({
   const rect = anchorRef.current?.getBoundingClientRect();
   if (!rect) return null;
 
-  const existingPresets = new Set(providers.map((p) => p.preset).filter(Boolean));
-
   const menuHeight = 320; // approximate max height of the dropdown
   const spaceBelow = window.innerHeight - rect.bottom - 6;
   const openUpward = spaceBelow < menuHeight && rect.top > spaceBelow;
