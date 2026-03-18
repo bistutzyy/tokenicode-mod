@@ -33,19 +33,25 @@ export function ModelSelector({ disabled = false }: { disabled?: boolean }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Build display options: show real model names when a provider with mappings is active
+  // Build display options: show real model names when a provider with mappings is active.
+  // Deduplicate: if multiple Claude models map to the same provider model, keep only the first.
   const displayOptions = useMemo(() => {
     if (!activeProvider || activeProvider.modelMappings.length === 0) {
       return MODEL_OPTIONS.map((m) => ({ ...m, mapped: false }));
     }
+    const seen = new Set<string>();
     return MODEL_OPTIONS.map((m) => {
       const tier = TIER_MAP[m.id];
       const mapping = activeProvider.modelMappings.find((mm) => mm.tier === tier);
       if (mapping?.providerModel) {
+        if (seen.has(mapping.providerModel)) {
+          return null; // duplicate — skip
+        }
+        seen.add(mapping.providerModel);
         return { ...m, label: mapping.providerModel, short: mapping.providerModel, mapped: true };
       }
       return { ...m, mapped: false };
-    });
+    }).filter(Boolean) as (typeof MODEL_OPTIONS[number] & { mapped: boolean })[];
   }, [activeProvider]);
 
   const current = displayOptions.find((m) => m.id === selectedModel) || displayOptions[0];
