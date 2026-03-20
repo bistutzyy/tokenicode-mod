@@ -6,6 +6,22 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.8.21] - 2026-03-20
+
+### Added
+
+- **OpenRouter 预设** — 新增 OpenRouter Provider 预设，支持 Anthropic 兼容端点，`${API_KEY}` 占位符机制自动处理 AUTH_TOKEN 认证
+- **自定义模型支持** — ModelSelector 展示 Provider 的额外模型（extra models），分隔线区分官方模型与自定义模型，选中后直接传给 CLI
+- **"添加新模型" 简化 UI** — 额外模型从双输入框简化为单输入框，tier 和 providerModel 自动同步
+
+### Fixed
+
+- **CLI 搜索路径补全** — 新增 NVM、fnm、Volta、Bun 路径检索；Windows 新增 nvm-windows、`%LocalAppData%\Programs\claude-code\` 路径；添加 `which`/`where` 终极兜底
+- **Login shell PATH 超时** — 从 3 秒放宽至 5 秒，oh-my-zsh 重度用户不再因超时导致 PATH 丢失
+- **extra_env keys_to_remove 未从 HashMap 移除** — 修复空值环境变量被 keys_to_remove 标记后仍被重新注入到子进程的 bug
+
+---
+
 ## [0.8.20] - 2026-03-19
 
 ### Changed
