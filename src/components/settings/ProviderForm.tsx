@@ -346,15 +346,10 @@ export function ProviderForm({ provider, onClose, onDelete, autoTest, onTestStat
           ))}
           {extraMappings.map((m, i) => (
             <div key={`extra-${i}`} className="flex items-center gap-1.5">
-              <input className="w-2/5 shrink-0 px-3 py-2 text-[13px] bg-bg-chat border border-border-subtle rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
-                value={m.tier}
-                onChange={(e) => updateExtraTier(m.tier, e.target.value)}
-                placeholder={t('provider.modelIdPlaceholder')} />
-              <span className="text-text-tertiary text-xs shrink-0">→</span>
-              <input className="flex-1 min-w-0 px-3 py-2 text-[13px] bg-bg-chat border border-border-subtle rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
+              <input className="flex-1 min-w-0 px-3 py-2 text-[13px] bg-bg-chat border border-border-subtle rounded-lg text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent font-mono"
                 value={m.providerModel}
-                onChange={(e) => updateMapping(m.tier || `__extra_${i}`, e.target.value)}
-                placeholder={t('provider.providerModelPlaceholder')} />
+                onChange={(e) => updateExtraModel(m.tier, e.target.value)}
+                placeholder={t('provider.extraModelPlaceholder')} />
               <button onClick={() => removeExtraMapping(m.tier)}
                 className="text-text-tertiary hover:text-text-primary transition-smooth shrink-0 p-0.5">
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none"
