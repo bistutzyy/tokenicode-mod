@@ -19,6 +19,44 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.21',
+    date: '2026-03-20',
+    highlights: {
+      zh: ['OpenRouter 预设 + 自定义模型 + CLI 搜索路径修复'],
+      en: ['OpenRouter preset + custom models + CLI path fix'],
+    },
+    categories: [
+      {
+        label: { zh: '新增', en: 'Added' },
+        items: {
+          zh: [
+            'OpenRouter 预设 — 支持 300+ 模型，自动处理认证',
+            '自定义模型 — 在模型选择器直接添加和切换额外模型',
+            '"添加新模型" — 单输入框，填模型名即可',
+          ],
+          en: [
+            'OpenRouter preset — 300+ models, auto auth handling',
+            'Custom models — add and switch extra models in selector',
+            '"Add model" — single input, just type the model name',
+          ],
+        },
+      },
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            'CLI 搜索路径补全：NVM / fnm / Volta / Bun + which/where 兜底',
+            'Shell PATH 超时放宽至 5 秒',
+          ],
+          en: [
+            'CLI search: NVM / fnm / Volta / Bun + which/where fallback',
+            'Shell PATH timeout extended to 5s',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.8.20',
     date: '2026-03-19',
     highlights: {
