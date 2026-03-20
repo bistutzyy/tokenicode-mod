@@ -701,6 +701,60 @@ fn truncate_large_content(value: &mut Value, max_bytes: usize) {
     }
 }
 
+/// Patch ~/.claude.json to raise `tengu_hawthorn_window` for models with 1M context.
+///
+/// Claude Code's compaction threshold is controlled by the GrowthBook feature flag
+/// `tengu_hawthorn_window` (default 200K). For third-party models like MiMo v2 Pro
+/// that support 1M context, this limit is too aggressive. We patch the cached flag
+/// so the CLI uses the correct window at startup.
+///
+/// Idempotent: only patches if current value < target. Fire-and-forget (errors logged).
+fn patch_claude_context_window(model: Option<&str>) {
+    let Some(model_name) = model else { return };
+    let m = model_name.to_lowercase();
+    // Match mimo-v2-pro[1m] or any future model with [1m] suffix
+    if !m.contains("mimo") && !m.contains("[1m]") {
+        return;
+    }
+    let target: u64 = 1_000_000;
+    let Ok(Some(home)) = dirs::home_dir().map(Some).ok_or(()).map_err(|_| ()) else {
+        return;
+    };
+    let claude_json = home.join(".claude.json");
+    if !claude_json.exists() {
+        return;
+    }
+    let Ok(content) = std::fs::read_to_string(&claude_json) else {
+        return;
+    };
+    let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return;
+    };
+    let current = json
+        .get("cachedGrowthBookFeatures")
+        .and_then(|f| f.get("tengu_hawthorn_window"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    if current >= target {
+        return; // Already high enough
+    }
+    if let Some(features) = json.get_mut("cachedGrowthBookFeatures") {
+        if let Some(obj) = features.as_object_mut() {
+            obj.insert(
+                "tengu_hawthorn_window".to_string(),
+                serde_json::Value::from(target),
+            );
+            eprintln!(
+                "[TK] Patched tengu_hawthorn_window: {} → {} for model {}",
+                current, target, model_name
+            );
+            if let Ok(patched) = serde_json::to_string_pretty(&json) {
+                let _ = std::fs::write(&claude_json, patched);
+            }
+        }
+    }
+}
+
 /// Build an enriched PATH that includes common binary locations
 fn build_enriched_path() -> String {
     let current = std::env::var("PATH").unwrap_or_default();
@@ -1259,9 +1313,23 @@ fn resolve_provider_env(
             if v.is_empty() {
                 keys_to_remove.push(k.clone());
             } else {
-                env.insert(k.clone(), v.clone());
+                // Support ${API_KEY} placeholder for providers that need the key
+                // in a different env var (e.g. OpenRouter uses ANTHROPIC_AUTH_TOKEN)
+                let resolved = if v.contains("${API_KEY}") {
+                    let key = provider.api_key.as_deref().unwrap_or("");
+                    v.replace("${API_KEY}", key)
+                } else {
+                    v.clone()
+                };
+                env.insert(k.clone(), resolved);
             }
         }
+    }
+
+    // Ensure keys marked for removal are also purged from the env HashMap,
+    // so they don't get re-inserted during spawn.
+    for k in &keys_to_remove {
+        env.remove(k);
     }
 
     // No extra CLI args needed — env vars set on the process take precedence.
@@ -1457,6 +1525,9 @@ async fn start_claude_session(
             }
         }
     }
+
+    // Patch ~/.claude.json context window for 1M models (MiMo v2 Pro etc.)
+    patch_claude_context_window(params.model.as_deref());
 
     // On Windows, .cmd/.bat files must be launched via cmd /C
     #[cfg(target_os = "windows")]

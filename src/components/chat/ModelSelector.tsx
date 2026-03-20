@@ -1,15 +1,25 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { useSettingsStore, MODEL_OPTIONS, type ModelId } from '../../stores/settingsStore';
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
+import { useSettingsStore, MODEL_OPTIONS } from '../../stores/settingsStore';
 import { useChatStore, generateMessageId } from '../../stores/chatStore';
 import { useProviderStore } from '../../stores/providerStore';
 
-/** Tier mapping from ModelId to provider tier key */
-const TIER_MAP: Record<ModelId, 'opus' | 'sonnet' | 'haiku'> = {
+/** Tier mapping from official ModelId to provider tier key */
+const TIER_MAP: Record<string, 'opus' | 'sonnet' | 'haiku'> = {
   'claude-opus-4-6': 'opus',
   'claude-opus-4-6-1m': 'opus',
   'claude-sonnet-4-6': 'sonnet',
   'claude-haiku-4-5-20251001': 'haiku',
 };
+
+const FIXED_TIERS = new Set(['opus', 'sonnet', 'haiku']);
+
+interface DisplayOption {
+  id: string;
+  label: string;
+  short: string;
+  mapped: boolean;
+  isExtra: boolean;
+}
 
 export function ModelSelector({ disabled = false }: { disabled?: boolean }) {
   const selectedModel = useSettingsStore((s) => s.selectedModel);
@@ -33,25 +43,37 @@ export function ModelSelector({ disabled = false }: { disabled?: boolean }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Build display options: show real model names when a provider with mappings is active.
+  // Build display options: official Claude models + extra models from provider.
   // Deduplicate: if multiple Claude models map to the same provider model, keep only the first.
-  const displayOptions = useMemo(() => {
+  const displayOptions = useMemo((): DisplayOption[] => {
     if (!activeProvider || activeProvider.modelMappings.length === 0) {
-      return MODEL_OPTIONS.map((m) => ({ ...m, mapped: false }));
+      return MODEL_OPTIONS.map((m) => ({ id: m.id, label: m.label, short: m.short, mapped: false, isExtra: false }));
     }
+
+    // Official models with tier mapping
     const seen = new Set<string>();
-    return MODEL_OPTIONS.map((m) => {
+    const official = MODEL_OPTIONS.map((m) => {
       const tier = TIER_MAP[m.id];
       const mapping = activeProvider.modelMappings.find((mm) => mm.tier === tier);
       if (mapping?.providerModel) {
-        if (seen.has(mapping.providerModel)) {
-          return null; // duplicate — skip
-        }
+        if (seen.has(mapping.providerModel)) return null;
         seen.add(mapping.providerModel);
-        return { ...m, label: mapping.providerModel, short: mapping.providerModel, mapped: true };
+        return { id: m.id, label: mapping.providerModel, short: mapping.providerModel, mapped: true, isExtra: false };
       }
-      return { ...m, mapped: false };
-    }).filter(Boolean) as (typeof MODEL_OPTIONS[number] & { mapped: boolean })[];
+      return { id: m.id, label: m.label, short: m.short, mapped: false, isExtra: false };
+    }).filter(Boolean) as DisplayOption[];
+
+    // Extra models (non-tier mappings added by user)
+    const extras: DisplayOption[] = activeProvider.modelMappings
+      .filter((m) => !FIXED_TIERS.has(m.tier) && m.tier && m.providerModel)
+      .map((m) => {
+        const short = m.providerModel.includes('/')
+          ? m.providerModel.split('/').pop()!
+          : m.providerModel;
+        return { id: m.tier, label: m.providerModel, short, mapped: true, isExtra: true };
+      });
+
+    return [...official, ...extras];
   }, [activeProvider]);
 
   const current = displayOptions.find((m) => m.id === selectedModel) || displayOptions[0];
@@ -79,46 +101,50 @@ export function ModelSelector({ disabled = false }: { disabled?: boolean }) {
       </button>
 
       {open && (
-        <div className="absolute bottom-full right-0 mb-1 w-48
+        <div className="absolute bottom-full right-0 mb-1 w-56
           bg-bg-card border border-border-subtle rounded-xl shadow-lg
           py-1 z-50 animate-in fade-in slide-in-from-bottom-1 duration-150">
-          {displayOptions.map((option) => (
-            <button
-              key={option.id}
-              onClick={() => {
-                if (option.id !== selectedModel) {
-                  const oldShort = current.short;
-                  const newShort = option.short;
-                  setSelectedModel(option.id);
-                  // Insert model-switch tag into chat immediately
-                  useChatStore.getState().addMessage({
-                    id: generateMessageId(),
-                    role: 'system',
-                    type: 'text',
-                    content: `${oldShort} → ${newShort}`,
-                    commandType: 'model-switch',
-                    timestamp: Date.now(),
-                  });
-                }
-                setOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 text-xs
-                transition-smooth flex items-center justify-between
-                ${option.id === selectedModel
-                  ? 'text-accent bg-accent/5'
-                  : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
-                }`}
-            >
-              <div>
-                <div className={`font-medium ${option.mapped ? 'font-mono' : ''}`}>{option.label}</div>
-              </div>
-              {option.id === selectedModel && (
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M3 8l3.5 3.5L13 5" />
-                </svg>
+          {displayOptions.map((option, index) => (
+            <Fragment key={option.id}>
+              {option.isExtra && index > 0 && !displayOptions[index - 1].isExtra && (
+                <div className="border-t border-border-subtle my-1" />
               )}
-            </button>
+              <button
+                onClick={() => {
+                  if (option.id !== selectedModel) {
+                    const oldShort = current.short;
+                    const newShort = option.short;
+                    setSelectedModel(option.id);
+                    // Insert model-switch tag into chat immediately
+                    useChatStore.getState().addMessage({
+                      id: generateMessageId(),
+                      role: 'system',
+                      type: 'text',
+                      content: `${oldShort} → ${newShort}`,
+                      commandType: 'model-switch',
+                      timestamp: Date.now(),
+                    });
+                  }
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-xs
+                  transition-smooth flex items-center justify-between
+                  ${option.id === selectedModel
+                    ? 'text-accent bg-accent/5'
+                    : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
+                  }`}
+              >
+                <div className="min-w-0">
+                  <div className={`font-medium truncate ${option.mapped ? 'font-mono' : ''}`}>{option.label}</div>
+                </div>
+                {option.id === selectedModel && (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 ml-2">
+                    <path d="M3 8l3.5 3.5L13 5" />
+                  </svg>
+                )}
+              </button>
+            </Fragment>
           ))}
         </div>
       )}

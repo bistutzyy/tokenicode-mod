@@ -43,7 +43,7 @@ interface SettingsState {
   secondaryPanelWidth: number;
   settingsOpen: boolean;
   workingDirectory: string;
-  selectedModel: ModelId;
+  selectedModel: string;
   sessionMode: SessionMode;
   locale: Locale;
   /** Global UI font size in px (default 18) */
@@ -84,7 +84,7 @@ interface SettingsState {
   setSecondaryPanelWidth: (width: number) => void;
   toggleSettings: () => void;
   setWorkingDirectory: (dir: string) => void;
-  setSelectedModel: (model: ModelId) => void;
+  setSelectedModel: (model: string) => void;
   setSessionMode: (mode: SessionMode) => void;
   setLocale: (locale: Locale) => void;
   toggleLocale: () => void;

@@ -12,7 +12,7 @@ export type ModelResolution =
  * Resolve the UI-selected model ID to the provider's actual model name,
  * returning an error if the provider has no mapping for the selected tier.
  */
-export function resolveModelOrError(selectedModel: ModelId): ModelResolution {
+export function resolveModelOrError(selectedModel: string): ModelResolution {
   const provider = useProviderStore.getState().getActive();
   if (!provider) return { ok: true, model: selectedModel };
 
@@ -25,7 +25,7 @@ export function resolveModelOrError(selectedModel: ModelId): ModelResolution {
   }
 
   // 2. Fall back to tier mapping
-  const tierMap: Record<ModelId, 'opus' | 'sonnet' | 'haiku'> = {
+  const tierMap: Record<string, 'opus' | 'sonnet' | 'haiku'> = {
     'claude-opus-4-6': 'opus',
     'claude-opus-4-6-1m': 'opus',
     'claude-sonnet-4-6': 'sonnet',
@@ -53,7 +53,7 @@ const CLI_MODEL_MAP: Partial<Record<ModelId, string>> = {
   'claude-opus-4-6-1m': 'claude-opus-4-6[1m]',
 };
 
-export function resolveModelForProvider(selectedModel: ModelId): string {
+export function resolveModelForProvider(selectedModel: string): string {
   const r = resolveModelOrError(selectedModel);
   const model = r.ok ? r.model : selectedModel;
   return CLI_MODEL_MAP[model as ModelId] ?? model;

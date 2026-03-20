@@ -1,12 +1,12 @@
 import { useRef, useCallback, useState } from 'react';
-import { useSettingsStore, MODEL_OPTIONS, ColorTheme, type ModelId } from '../../stores/settingsStore';
+import { useSettingsStore, MODEL_OPTIONS, ColorTheme } from '../../stores/settingsStore';
 import { useProviderStore } from '../../stores/providerStore';
 import { useT } from '../../lib/i18n';
 import { AiAvatar } from '../shared/AiAvatar';
 import { UserAvatar } from '../shared/UserAvatar';
 import { AvatarCropModal } from './AvatarCropModal';
 
-const TIER_MAP: Record<ModelId, string> = {
+const TIER_MAP: Record<string, string> = {
   'claude-opus-4-6': 'opus',
   'claude-opus-4-6-1m': 'opus',
   'claude-sonnet-4-6': 'sonnet',

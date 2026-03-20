@@ -246,9 +246,14 @@ function ActivityIndicator({ activityStatus, sessionMeta }: {
     ? tokens ? `(${elapsed} · ↓ ${tokens})` : `(${elapsed})`
     : null;
 
-  // Context pressure warning: show when inputTokens exceeds 120K (60% of 200K window)
+  // Context pressure warning: threshold depends on model context window size
+  // 1M models (claude-opus-4-6-1m, mimo-v2-pro[1m]) → warn at 600K; others at 120K (60% of 200K)
+  const selectedModel = useSettingsStore((s) => s.selectedModel);
+  const resolvedModel = resolveModelForProvider(selectedModel);
+  const is1MModel = resolvedModel.includes('[1m]') || selectedModel === 'claude-opus-4-6-1m';
+  const contextWindow = is1MModel ? 1_000_000 : 200_000;
   const inputTokens = sessionMeta.inputTokens || 0;
-  const contextWarning = inputTokens > 120_000;
+  const contextWarning = inputTokens > contextWindow * 0.6;
 
   // Stall detection: 120s of silence (no stream activity), not total elapsed time.
   const stallWarning = !!sessionMeta.lastProgressAt

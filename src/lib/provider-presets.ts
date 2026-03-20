@@ -88,6 +88,18 @@ export const PROVIDER_PRESETS: PresetProvider[] = [
     },
   },
   {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api',
+    apiFormat: 'anthropic',
+    extra_env: {
+      ANTHROPIC_AUTH_TOKEN: '${API_KEY}',
+      ANTHROPIC_API_KEY: '',
+    },
+    keyUrl: 'https://openrouter.ai/settings/keys',
+    thinkingSupport: 'full',
+  },
+  {
     id: 'mimo',
     name: '小米 MiMo',
     baseUrl: 'https://api.xiaomimimo.com/anthropic',
