@@ -8,6 +8,27 @@ import { envFingerprint, resolveModelForProvider } from '../lib/api-provider';
 import { useProviderStore } from '../stores/providerStore';
 import { t } from '../lib/i18n';
 
+// --- Error classification for user-facing messages ---
+// User-actionable errors are shown as-is; technical errors get a friendly summary
+// with raw details in a collapsible block.
+const USER_ACTIONABLE_RE = [
+  /40[13]|unauthorized|invalid.*key|api.key.*invalid/i,
+  /429|rate.limit|too.many.request/i,
+  /quota|insufficient.*balance|credit|billing/i,
+  /overloaded|503|service.unavailable/i,
+  /timeout|timed?.out|ETIMEDOUT|ECONNREFUSED/i,
+  /network|ENOTFOUND|fetch.failed|dns/i,
+  /permission|access.denied|forbidden/i,
+  /not.found|does.not.exist|no.such/i,
+  /token.*limit|context.*length|too.long/i,
+];
+
+export function formatErrorForUser(raw: string): string {
+  if (!raw || raw.length < 10) return raw;
+  if (USER_ACTIONABLE_RE.some((p) => p.test(raw))) return raw;
+  return `${t('error.technicalSummary')}\n\n<details>\n<summary>${t('error.showDetails')}</summary>\n\n\`\`\`\n${raw}\n\`\`\`\n\n</details>`;
+}
+
 // --- Streaming text buffer (rAF-throttled, per-stdinId) ---
 // Coalesces rapid text_delta / thinking_delta events into a single state update
 // per animation frame (~60/s), preventing JS main thread starvation from
@@ -595,11 +616,12 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           cache.setMetaInCache(tabId, { model: msg.model });
         } else if (msg.subtype === 'error') {
           // FI-3: Surface system errors in background tabs too
+          const rawBgError = msg.message || msg.error || 'System error';
           cache.addMessageToCache(tabId, {
             id: generateMessageId(),
             role: 'system',
             type: 'text',
-            content: msg.message || msg.error || 'System error',
+            content: formatErrorForUser(rawBgError),
             timestamp: Date.now(),
           });
         }
@@ -932,11 +954,12 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           setSessionMeta({ model: msg.model });
         } else if (msg.subtype === 'error') {
           // FI-3: Surface system-level errors instead of silently dropping them
+          const rawError = msg.message || msg.error || 'System error';
           addMessage({
             id: generateMessageId(),
             role: 'system',
             type: 'text',
-            content: msg.message || msg.error || 'System error',
+            content: formatErrorForUser(rawError),
             timestamp: Date.now(),
           });
         } else {
@@ -1711,7 +1734,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
                 id: generateMessageId(),
                 role: 'system',
                 type: 'text',
-                content: `CLI error: ${stderr}${hint}`,
+                content: formatErrorForUser(`CLI error: ${stderr}${hint}`),
                 timestamp: Date.now(),
               });
             } else {
@@ -1807,7 +1830,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         id: generateMessageId(),
         role: 'system',
         type: 'text',
-        content: `Internal error processing stream message: ${err}`,
+        content: formatErrorForUser(`Internal error processing stream message: ${err}`),
         timestamp: Date.now(),
       });
     }

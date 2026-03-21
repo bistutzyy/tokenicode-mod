@@ -160,6 +160,12 @@ const messages: Record<Locale, Record<string, string>> = {
     // ProjectSelector
     'project.selectFolder': '选择项目文件夹',
     'project.selectBtn': '选择项目...',
+    'project.directoryMissing': '项目文件夹已被移动或删除，请重新选择',
+    'project.reselect': '重新选择',
+
+    // Error classification
+    'error.technicalSummary': '遇到了一个技术问题，通常重试即可解决。',
+    'error.showDetails': '查看详情',
 
     // CommandPalette
     'cmd.newChat': '新任务',
@@ -802,6 +808,12 @@ const messages: Record<Locale, Record<string, string>> = {
     // ProjectSelector
     'project.selectFolder': 'Select Project Folder',
     'project.selectBtn': 'Select project...',
+    'project.directoryMissing': 'Project folder has been moved or deleted. Please select a new one.',
+    'project.reselect': 'Reselect',
+
+    // Error classification
+    'error.technicalSummary': 'A technical issue occurred. Retrying usually resolves it.',
+    'error.showDetails': 'Show details',
 
     // CommandPalette
     'cmd.newChat': 'New Task',

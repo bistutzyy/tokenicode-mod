@@ -32,6 +32,9 @@ interface FileState {
   // File change tracking
   changedFiles: Map<string, FileChangeKind>;
 
+  // Directory missing detection
+  directoryMissing: boolean;
+
   // External drag-drop state
   isDragOverTree: boolean;
 
@@ -77,6 +80,7 @@ export const useFileStore = create<FileState>()((set, get) => ({
   recentProjects: [],
   isLoadingProjects: false,
   changedFiles: new Map(),
+  directoryMissing: false,
   isDragOverTree: false,
 
   loadTree: async (path: string) => {
@@ -94,11 +98,12 @@ export const useFileStore = create<FileState>()((set, get) => ({
       const tree = await bridge.readFileTree(path, 8);
       // Guard: only apply if rootPath hasn't changed during async load
       if (get().rootPath === path) {
-        set({ tree, isLoading: false, changedFiles: new Map() });
+        set({ tree, isLoading: false, changedFiles: new Map(), directoryMissing: false });
       }
-    } catch {
+    } catch (err) {
       if (get().rootPath === path) {
-        set({ isLoading: false });
+        const missing = String(err).includes('does not exist');
+        set({ isLoading: false, directoryMissing: missing });
       }
     }
   },
@@ -114,8 +119,10 @@ export const useFileStore = create<FileState>()((set, get) => ({
       } else {
         set({ tree });
       }
-    } catch {
-      // Silently fail — tree stays as-is
+    } catch (err) {
+      if (String(err).includes('does not exist')) {
+        set({ directoryMissing: true, tree: [] });
+      }
     }
   },
 

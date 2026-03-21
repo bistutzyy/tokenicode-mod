@@ -309,6 +309,7 @@ export function ChatPanel() {
   const toggleAgentPanel = useSettingsStore((s) => s.toggleAgentPanel);
   const sessionMode = useSettingsStore((s) => s.sessionMode);
   const workingDirectory = useSettingsStore((s) => s.workingDirectory);
+  const directoryMissing = useFileStore((s) => s.directoryMissing);
   const activeProvider = useProviderStore((s) => {
     if (!s.activeProviderId) return null;
     return s.providers.find((p) => p.id === s.activeProviderId) ?? null;
@@ -684,8 +685,33 @@ export function ChatPanel() {
         </button>
       )}
 
-      {/* Input — only show when a project folder is selected */}
-      {workingDirectory && <InputBar />}
+      {/* Directory missing banner */}
+      {workingDirectory && directoryMissing && (
+        <div className="mx-4 mb-3 px-4 py-3 rounded-xl bg-status-warning/10 border border-status-warning/30
+          flex items-center gap-3 text-sm text-text-secondary">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+            strokeWidth="1.5" className="flex-shrink-0 text-status-warning">
+            <path d="M8 1.5L1.5 13h13L8 1.5z" strokeLinejoin="round" />
+            <path d="M8 6v3" strokeLinecap="round" />
+            <circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none" />
+          </svg>
+          <span className="flex-1">{t('project.directoryMissing')}</span>
+          <button
+            onClick={async () => {
+              const selected = await open({ directory: true, multiple: false, title: t('project.selectFolder') });
+              if (selected) useSettingsStore.getState().setWorkingDirectory(selected as string);
+            }}
+            className="px-3 py-1 rounded-lg text-xs font-medium
+              bg-status-warning/20 hover:bg-status-warning/30
+              text-status-warning transition-smooth"
+          >
+            {t('project.reselect')}
+          </button>
+        </div>
+      )}
+
+      {/* Input — only show when a project folder is selected and exists */}
+      {workingDirectory && !directoryMissing && <InputBar />}
       </div>{/* end main chat area */}
 
       {/* Right-side plan panel (resizable) */}

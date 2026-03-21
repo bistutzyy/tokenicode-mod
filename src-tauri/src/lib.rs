@@ -1535,8 +1535,12 @@ async fn start_claude_session(
     // Append provider-specific CLI args (e.g. --setting-sources project,local)
     args.extend(provider_extra_args);
 
+    // Third-party providers (identified by ANTHROPIC_BASE_URL) don't support
+    // CLAUDE_CODE_* env vars — skip injecting them to avoid breaking the CLI.
+    let is_third_party = resolved_env.contains_key("ANTHROPIC_BASE_URL");
+
     // Inject effort level env var for non-off thinking levels
-    if thinking_level != "off" {
+    if thinking_level != "off" && !is_third_party {
         resolved_env.insert(
             "CLAUDE_CODE_EFFORT_LEVEL".to_string(),
             thinking_level.to_string(),
@@ -1546,9 +1550,11 @@ async fn start_claude_session(
     // Raise the per-turn output token cap from the CLI default (32K) to 64K.
     // This prevents "response exceeded the 32000 output token maximum" errors
     // when generating large files (e.g. HTML presentations).
-    resolved_env
-        .entry("CLAUDE_CODE_MAX_OUTPUT_TOKENS".to_string())
-        .or_insert_with(|| "64000".to_string());
+    if !is_third_party {
+        resolved_env
+            .entry("CLAUDE_CODE_MAX_OUTPUT_TOKENS".to_string())
+            .or_insert_with(|| "64000".to_string());
+    }
 
     // Enable CLI-managed file checkpoints for rewind functionality.
     // With --replay-user-messages, user messages in stream output carry a uuid
@@ -3322,6 +3328,10 @@ async fn watch_directory(
     path: String,
 ) -> Result<(), String> {
     use notify::{Event, EventKind, RecursiveMode, Watcher};
+
+    if !std::path::Path::new(&path).exists() {
+        return Err("Directory does not exist".to_string());
+    }
 
     // Stop existing watcher for this path if any
     {
