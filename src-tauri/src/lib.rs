@@ -1465,12 +1465,35 @@ fn resolve_provider_env(
 
 /// Read user-configured MCP servers from ~/.claude.json.
 /// Returns a JSON string for --mcp-config if servers exist, None otherwise.
+/// Auto-fixes double-nested `mcpServers.mcpServers` structure (Issue #33).
 fn read_user_mcp_servers() -> Option<String> {
     let home = dirs::home_dir()?;
     let claude_json_path = home.join(".claude.json");
     let content = std::fs::read_to_string(&claude_json_path).ok()?;
-    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
-    let servers = json.get("mcpServers")?;
+    let mut json: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+    let servers_val = json.get("mcpServers")?;
+
+    // Detect double-nested mcpServers.mcpServers and auto-flatten
+    let servers = if let Some(inner) = servers_val.get("mcpServers") {
+        if inner.is_object() {
+            eprintln!(
+                "[read_user_mcp_servers] WARNING: detected double-nested mcpServers.mcpServers in ~/.claude.json, auto-flattening"
+            );
+            // Auto-fix the file: flatten the nesting
+            let flattened = inner.clone();
+            json["mcpServers"] = flattened;
+            if let Ok(fixed) = serde_json::to_string_pretty(&json) {
+                let _ = std::fs::write(&claude_json_path, fixed);
+            }
+            json.get("mcpServers")?
+        } else {
+            servers_val
+        }
+    } else {
+        servers_val
+    };
+
     let obj = servers.as_object()?;
     if obj.is_empty() {
         return None;
