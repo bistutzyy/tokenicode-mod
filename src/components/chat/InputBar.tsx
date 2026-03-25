@@ -1151,33 +1151,35 @@ export function InputBar() {
       lastStderrRef.current = clean;
     }
 
-    const { addMessage } = useChatStore.getState();
+    const stderrTabId = useSessionStore.getState().selectedSessionId;
 
     // Detect ExitPlanMode prompt — create plan_review card as fallback (Plan mode only).
     // In Code/Bypass modes the CLI or Rust backend handles this — no UI card needed.
     if (/(?:Exit|Leave)\s+plan\s+mode/i.test(clean)
         && useSettingsStore.getState().sessionMode === 'plan') {
-      const store = useChatStore.getState();
-      const existingReview = store.messages.find(
-        (m) => m.id === 'plan_review_current' && m.type === 'plan_review',
+      const stderrTabState = getActiveTabState();
+      const existingReview = stderrTabState.messages.find(
+        (m: import('../../stores/chatStore').ChatMessage) => m.id === 'plan_review_current' && m.type === 'plan_review',
       );
       if (!existingReview || existingReview.resolved) {
         if (existingReview?.resolved) return;
         let planContent = '';
-        for (let i = store.messages.length - 1; i >= 0; i--) {
-          const m = store.messages[i];
+        for (let i = stderrTabState.messages.length - 1; i >= 0; i--) {
+          const m = stderrTabState.messages[i];
           if (m.type === 'tool_use' && m.toolName === 'Write' && m.toolInput?.content) {
             planContent = m.toolInput.content;
             break;
           }
         }
-        addMessage({
-          id: 'plan_review_current',
-          role: 'assistant', type: 'plan_review',
-          content: planContent, planContent: planContent,
-          resolved: false, timestamp: Date.now(),
-        });
-        store.setActivityStatus({ phase: 'awaiting' });
+        if (stderrTabId) {
+          useChatStore.getState().addMessage(stderrTabId, {
+            id: 'plan_review_current',
+            role: 'assistant', type: 'plan_review',
+            content: planContent, planContent: planContent,
+            resolved: false, timestamp: Date.now(),
+          });
+          useChatStore.getState().setActivityStatus(stderrTabId, { phase: 'awaiting' });
+        }
       }
       return;
     }
