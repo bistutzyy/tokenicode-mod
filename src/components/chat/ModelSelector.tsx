@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import { useSettingsStore, MODEL_OPTIONS } from '../../stores/settingsStore';
 import { useChatStore, generateMessageId } from '../../stores/chatStore';
+import { useSessionStore } from '../../stores/sessionStore';
 import { useProviderStore } from '../../stores/providerStore';
 
 /** Tier mapping from official ModelId to provider tier key */
