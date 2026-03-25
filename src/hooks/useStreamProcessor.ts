@@ -1619,7 +1619,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           setTimeout(() => {
             const meta = useChatStore.getState().getTab(tabId)?.sessionMeta;
             if (meta.pendingCommandMsgId === compactMsgId) {
-              useChatStore.getState().updateMessage(compactMsgId, {
+              useChatStore.getState().updateMessage(tabId, compactMsgId, {
                 commandCompleted: true,
                 commandData: {
                   ...(useChatStore.getState().getTab(tabId)?.messages ?? []).find((m) => m.id === compactMsgId)?.commandData,
