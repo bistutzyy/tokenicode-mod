@@ -45,8 +45,8 @@ async function restoreFilesViaCheckpoint(turn: Turn): Promise<boolean> {
 }
 
 export function useRewind() {
-  const messages = useChatStore((s) => s.messages);
-  const sessionStatus = useChatStore((s) => s.sessionStatus);
+  const messages = useActiveTab((t) => t.messages);
+  const sessionStatus = useActiveTab((t) => t.sessionStatus);
 
   const turns = useMemo(() => parseTurns(messages), [messages]);
 
