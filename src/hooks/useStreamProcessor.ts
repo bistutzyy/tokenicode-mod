@@ -451,7 +451,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
                 ? block.content.map((b: any) => typeof b.text === 'string' ? b.text : typeof b.content === 'string' ? b.content : '').join('')
                 : typeof block.content === 'string' ? block.content : '';
               if (block.tool_use_id && resultText) {
-                cache.updateMessageInCache(tabId, block.tool_use_id, { toolResultContent: resultText });
+                store.updateMessage(tabId, block.tool_use_id, { toolResultContent: resultText });
               }
             }
           }
@@ -463,9 +463,9 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           ? msg.content.map((b: any) => typeof b.text === 'string' ? b.text : typeof b.content === 'string' ? b.content : '').join('')
           : typeof msg.content === 'string' ? msg.content : msg.output || '';
         if (msg.tool_use_id) {
-          // Backfill AskUserQuestion type/questions in background cache
-          const snapshot = cache.sessionCache.get(tabId);
-          const parentMsg = snapshot?.messages.find((m) => m.id === msg.tool_use_id);
+          // Backfill AskUserQuestion type/questions in background tab
+          const bgTab = store.getTab(tabId);
+          const parentMsg = bgTab?.messages.find((m) => m.id === msg.tool_use_id);
           const bgUpdates: Partial<ChatMessage> = { toolResultContent: resultContent };
           if (parentMsg?.toolName === 'AskUserQuestion') {
             if (parentMsg.type !== 'question') {
@@ -479,20 +479,20 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
               }
             }
           }
-          cache.updateMessageInCache(tabId, msg.tool_use_id, bgUpdates);
+          store.updateMessage(tabId, msg.tool_use_id, bgUpdates);
         }
         break;
       }
       case 'result': {
-        cache.setStatusInCache(tabId, msg.subtype === 'success' ? 'completed' : 'error');
+        store.setSessionStatus(tabId, msg.subtype === 'success' ? 'completed' : 'error');
         {
-          const snapshot = cache.sessionCache.get(tabId);
-          const prevMeta = snapshot?.sessionMeta;
+          const bgTab = store.getTab(tabId);
+          const prevMeta = bgTab?.sessionMeta;
           const resultInput = msg.usage?.input_tokens || 0;
           const resultOutput = msg.usage?.output_tokens || 0;
           const streamedInput = prevMeta?.inputTokens || 0;
           const streamedOutput = prevMeta?.outputTokens || 0;
-          cache.setMetaInCache(tabId, {
+          store.setSessionMeta(tabId, {
             cost: msg.total_cost_usd,
             duration: msg.duration_ms,
             turns: msg.num_turns,
@@ -506,13 +506,13 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         }
         if (typeof msg.result === 'string' && msg.result) {
           // Only add if not already delivered via 'assistant' event
-          const bgSnapshot = cache.sessionCache.get(tabId);
-          const bgIsDuplicate = bgSnapshot?.messages.some(
+          const bgTab = store.getTab(tabId);
+          const bgIsDuplicate = bgTab?.messages.some(
             (m) => m.role === 'assistant' && m.type === 'text'
               && m.content === msg.result,
           );
           if (!bgIsDuplicate) {
-            cache.addMessageToCache(tabId, {
+            store.addMessage(tabId, {
               id: msg.uuid || generateMessageId(),
               role: 'assistant', type: 'text',
               content: msg.result, timestamp: Date.now(),
@@ -525,11 +525,11 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         if (msg.subtype === 'success') {
           const customPreviews = useSessionStore.getState().customPreviews;
           if (!customPreviews[tabId]) {
-            const bgSnap = cache.sessionCache.get(tabId);
-            const bgUserMsgs = bgSnap?.messages.filter(
+            const bgTab = store.getTab(tabId);
+            const bgUserMsgs = bgTab?.messages.filter(
               (m) => m.role === 'user' && m.type === 'text' && m.content,
             ) || [];
-            const bgAssistantMsgs = bgSnap?.messages.filter(
+            const bgAssistantMsgs = bgTab?.messages.filter(
               (m) => m.role === 'assistant' && m.type === 'text' && m.content,
             ) || [];
             if (bgUserMsgs.length >= 3 && bgAssistantMsgs.length >= 3) {
@@ -551,18 +551,19 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         break;
       }
       case 'rate_limit_event': {
-        const rli = msg.rate_limit_info;
-        if (rli && rli.rateLimitType) {
-          const prev = cache.sessionCache.get(tabId)?.sessionMeta.rateLimits || {};
-          cache.setMetaInCache(tabId, {
+        const bgRli = msg.rate_limit_info;
+        if (bgRli && bgRli.rateLimitType) {
+          const bgTab = store.getTab(tabId);
+          const prevLimits = bgTab?.sessionMeta?.rateLimits || {};
+          store.setSessionMeta(tabId, {
             rateLimits: {
-              ...prev,
-              [rli.rateLimitType]: {
-                rateLimitType: rli.rateLimitType,
-                resetsAt: rli.resetsAt,
-                isUsingOverage: rli.isUsingOverage,
-                overageStatus: rli.overageStatus,
-                overageDisabledReason: rli.overageDisabledReason,
+              ...prevLimits,
+              [bgRli.rateLimitType]: {
+                rateLimitType: bgRli.rateLimitType,
+                resetsAt: bgRli.resetsAt,
+                isUsingOverage: bgRli.isUsingOverage,
+                overageStatus: bgRli.overageStatus,
+                overageDisabledReason: bgRli.overageDisabledReason,
               },
             },
           });
@@ -578,18 +579,9 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           (window as any).__claudeUnlisteners[bgStdinId]();
           delete (window as any).__claudeUnlisteners[bgStdinId];
         }
-        const exitMessages = cache.sessionCache.get(tabId)?.messages || [];
-        for (const m of exitMessages) {
-          if (['permission', 'question', 'plan_review'].includes(m.type) && !m.resolved) {
-            cache.updateMessageInCache(tabId, m.id, {
-              interactionState: 'failed',
-              interactionError: 'CLI process exited',
-            });
-          }
-        }
-        cache.setStatusInCache(tabId, 'idle');
-        cache.setMetaInCache(tabId, { stdinId: undefined, lastProgressAt: undefined });
-        // Clean up stdinId → tabId mapping to prevent memory leak
+        store.setSessionStatus(tabId, 'idle');
+        store.setSessionMeta(tabId, { stdinId: undefined });
+        // Clean up stdinToTab mapping to prevent memory leak
         if (bgStdinId) {
           useSessionStore.getState().unregisterStdinTab(bgStdinId);
         }
@@ -598,15 +590,14 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
       }
       case 'system':
         if (msg.subtype === 'init') {
-          cache.setMetaInCache(tabId, { model: msg.model });
+          store.setSessionMeta(tabId, { model: msg.model });
         } else if (msg.subtype === 'error') {
           // FI-3: Surface system errors in background tabs too
-          const rawBgError = msg.message || msg.error || 'System error';
-          cache.addMessageToCache(tabId, {
+          store.addMessage(tabId, {
             id: generateMessageId(),
             role: 'system',
             type: 'text',
-            content: formatErrorForUser(rawBgError),
+            content: formatErrorForUser(msg.message || msg.error || 'System error'),
             timestamp: Date.now(),
           });
         }
