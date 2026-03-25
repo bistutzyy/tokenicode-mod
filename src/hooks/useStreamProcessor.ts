@@ -276,51 +276,51 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         if (!evt) break;
         if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
           const text = evt.delta.text || '';
-          if (text) cache.updatePartialInCache(tabId, text);
+          if (text) store.updatePartialMessage(tabId, text);
         }
         // Early detection: create plan_review card for background tab (Plan mode only).
         // Bypass auto-approves via Rust backend — no UI card needed.
         if (evt.type === 'content_block_start'
             && evt.content_block?.type === 'tool_use'
             && evt.content_block?.name === 'ExitPlanMode'
-            && useSettingsStore.getState().sessionMode === 'plan') {
-          const bgSnapshot = cache.sessionCache.get(tabId);
-          const bgExisting = bgSnapshot?.messages.find((m) => m.id === 'plan_review_current');
+            && getEffectiveMode(store.getTab(tabId)?.sessionMeta) === 'plan') {
+          const bgTab = store.getTab(tabId);
+          const bgExisting = bgTab?.messages.find((m) => m.id === 'plan_review_current');
           if (!bgExisting || !bgExisting.resolved) {
             let bgPlanContent = '';
-            if (bgSnapshot) {
-              for (let i = bgSnapshot.messages.length - 1; i >= 0; i--) {
-                const m = bgSnapshot.messages[i];
+            if (bgTab) {
+              for (let i = bgTab.messages.length - 1; i >= 0; i--) {
+                const m = bgTab.messages[i];
                 if (m.type === 'tool_use' && m.toolName === 'Write' && m.toolInput?.content) {
                   bgPlanContent = m.toolInput.content;
                   break;
                 }
               }
             }
-            cache.addMessageToCache(tabId, {
+            store.addMessage(tabId, {
               id: 'plan_review_current',
               role: 'assistant', type: 'plan_review',
               content: bgPlanContent, planContent: bgPlanContent,
               resolved: false, timestamp: Date.now(),
             });
-            cache.setActivityInCache(tabId, { phase: 'awaiting' });
+            store.setActivityStatus(tabId, { phase: 'awaiting' });
           }
         }
         // Track tokens in background sessions (per-turn + cumulative total)
         if (evt.type === 'message_start' && evt.message?.usage?.input_tokens) {
-          const snapshot = cache.sessionCache.get(tabId);
+          const bgTab = store.getTab(tabId);
           const delta = evt.message.usage.input_tokens;
-          cache.setMetaInCache(tabId, {
-            inputTokens: (snapshot?.sessionMeta.inputTokens || 0) + delta,
-            totalInputTokens: (snapshot?.sessionMeta.totalInputTokens || 0) + delta,
+          store.setSessionMeta(tabId, {
+            inputTokens: (bgTab?.sessionMeta.inputTokens || 0) + delta,
+            totalInputTokens: (bgTab?.sessionMeta.totalInputTokens || 0) + delta,
           });
         }
         if (evt.type === 'message_delta' && evt.usage?.output_tokens) {
-          const snapshot = cache.sessionCache.get(tabId);
+          const bgTab = store.getTab(tabId);
           const delta = evt.usage.output_tokens;
-          cache.setMetaInCache(tabId, {
-            outputTokens: (snapshot?.sessionMeta.outputTokens || 0) + delta,
-            totalOutputTokens: (snapshot?.sessionMeta.totalOutputTokens || 0) + delta,
+          store.setSessionMeta(tabId, {
+            outputTokens: (bgTab?.sessionMeta.outputTokens || 0) + delta,
+            totalOutputTokens: (bgTab?.sessionMeta.totalOutputTokens || 0) + delta,
           });
         }
         break;
