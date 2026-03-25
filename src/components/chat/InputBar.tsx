@@ -486,7 +486,7 @@ export function InputBar() {
 
       // --- Info commands ---
       case 'cost': {
-        const meta = useChatStore.getState().sessionMeta;
+        const meta = getActiveTabState().sessionMeta;
         const hasData = meta.cost != null || meta.duration != null || meta.turns != null
           || meta.inputTokens != null || meta.outputTokens != null;
         const tokenValue = (meta.inputTokens != null || meta.outputTokens != null)
