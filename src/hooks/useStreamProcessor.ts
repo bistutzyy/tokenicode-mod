@@ -1790,7 +1790,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           useChatStore.getState().setInputDraft(tabId,
             draft ? `${draft}\n\n${pendingText}` : pendingText
           );
-          useChatStore.getState().clearPendingMessages();
+          useChatStore.getState().clearPendingMessages(tabId);
         }
 
         agentActions.completeAll();
