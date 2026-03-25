@@ -1828,14 +1828,15 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
     } catch (err) {
       // P1-4: catch-all for unexpected errors in stream message processing
       console.error('[TOKENICODE] handleStreamMessage error:', err, 'msg:', msg?.type, msg?.subtype);
-      const { addMessage } = useChatStore.getState();
-      addMessage({
-        id: generateMessageId(),
-        role: 'system',
-        type: 'text',
-        content: formatErrorForUser(`Internal error processing stream message: ${err}`),
-        timestamp: Date.now(),
-      });
+      if (tabId) {
+        useChatStore.getState().addMessage(tabId, {
+          id: generateMessageId(),
+          role: 'system',
+          type: 'text',
+          content: formatErrorForUser(`Internal error processing stream message: ${err}`),
+          timestamp: Date.now(),
+        });
+      }
     }
   }, [handleBackgroundStreamMessage, exitPlanModeSeenRef, autoCompactFiredRef, silentRestartRef, handleSubmitRef, handleStderrLineRef, setInputSync]);
 
