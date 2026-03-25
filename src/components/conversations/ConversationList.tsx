@@ -443,9 +443,10 @@ export function ConversationList() {
       useChatStore.getState().saveToCache(currentTabId);
       useAgentStore.getState().saveToCache(currentTabId);
     }
-    useChatStore.getState().resetSession();
-    const draftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    useSessionStore.getState().addDraftSession(draftId, realPath);
+    const newDraftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    useChatStore.getState().ensureTab(newDraftId);
+    useChatStore.getState().resetTab(newDraftId);
+    useSessionStore.getState().addDraftSession(newDraftId, realPath);
   }, []);
 
   // Pin / Archive handlers
