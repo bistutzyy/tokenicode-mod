@@ -258,9 +258,9 @@ export function InputBar() {
 
   // Floating approval cards — unresolved plan_review / question messages
   // are rendered above the input instead of inline in the chat flow.
-  const floatingCard = useChatStore((s) => {
-    for (let i = s.messages.length - 1; i >= 0; i--) {
-      const m = s.messages[i];
+  const floatingCard = useActiveTab((tab) => {
+    for (let i = tab.messages.length - 1; i >= 0; i--) {
+      const m = tab.messages[i];
       if ((m.type === 'plan_review' || m.type === 'question' || m.type === 'permission') && !m.resolved) return m;
     }
     return null;
