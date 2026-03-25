@@ -210,14 +210,17 @@ export function InputBar() {
   const sessionMode = useSettingsStore((s) => s.sessionMode);
 
   const handlePlanApprove = useCallback(async () => {
+    const tabId = useSessionStore.getState().selectedSessionId;
+    if (!tabId) return;
     const currentMode = useSettingsStore.getState().sessionMode;
-    const meta = useChatStore.getState().sessionMeta;
-    const status = useChatStore.getState().sessionStatus;
+    const tabState = getActiveTabState();
+    const meta = tabState.sessionMeta;
+    const status = tabState.sessionStatus;
 
     // If CLI is still alive (e.g., Bypass auto-accepted ExitPlanMode),
     // just dismiss the card — no restart needed.
     if (meta.stdinId && status === 'running') {
-      useChatStore.getState().setActivityStatus({ phase: 'thinking' });
+      useChatStore.getState().setActivityStatus(tabId, { phase: 'thinking' });
       return;
     }
 
@@ -230,7 +233,7 @@ export function InputBar() {
 
     // Clean up dead CLI process
     if (meta.stdinId) {
-      useChatStore.getState().setSessionMeta({ stdinId: undefined });
+      useChatStore.getState().setSessionMeta(tabId, { stdinId: undefined });
       bridge.killSession(meta.stdinId).catch(() => {});
       if ((window as any).__claudeUnlisteners?.[meta.stdinId]) {
         (window as any).__claudeUnlisteners[meta.stdinId]();
@@ -239,7 +242,7 @@ export function InputBar() {
     }
 
     // Restart with --resume <sessionId>
-    useChatStore.getState().setActivityStatus({ phase: 'thinking' });
+    useChatStore.getState().setActivityStatus(tabId, { phase: 'thinking' });
     setInputSync('Execute the plan above.');
     requestAnimationFrame(() => {
       handleSubmitRef.current();
