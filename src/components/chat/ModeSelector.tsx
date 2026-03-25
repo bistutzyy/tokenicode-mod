@@ -79,15 +79,18 @@ export function ModeSelector({ disabled = false }: { disabled?: boolean }) {
     if (mode === sessionMode) return;
     setSessionMode(mode);
     const fb = MODE_FEEDBACK[mode];
-    useChatStore.getState().addMessage({
-      id: generateMessageId(),
-      role: 'system',
-      type: 'text',
-      content: t(fb.i18nKey),
-      commandType: 'mode',
-      commandData: { mode, icon: fb.icon },
-      timestamp: Date.now(),
-    });
+    const modeTabId = useSessionStore.getState().selectedSessionId;
+    if (modeTabId) {
+      useChatStore.getState().addMessage(modeTabId, {
+        id: generateMessageId(),
+        role: 'system',
+        type: 'text',
+        content: t(fb.i18nKey),
+        commandType: 'mode',
+        commandData: { mode, icon: fb.icon },
+        timestamp: Date.now(),
+      });
+    }
   };
 
   return (
