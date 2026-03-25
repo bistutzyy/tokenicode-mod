@@ -205,26 +205,27 @@ interface ChatState {
   /** @deprecated Use resetTab(tabId) instead */
   resetSession: () => void;
 
-  // --- Tab-level operations (all take tabId) ---
-  addMessage: (tabId: string, message: ChatMessage) => void;
-  updateMessage: (tabId: string, id: string, updates: Partial<ChatMessage>) => void;
+  // --- Tab-level operations (all take tabId as first arg) ---
+  // Backward compat: methods also accept old v1 signatures (without tabId) and auto-infer active tab.
+  addMessage: ((tabId: string, message: ChatMessage) => void) & ((message: ChatMessage) => void);
+  updateMessage: ((tabId: string, id: string, updates: Partial<ChatMessage>) => void) & ((id: string, updates: Partial<ChatMessage>) => void);
   updatePartialMessage: (tabId: string, text: string) => void;
   updatePartialThinking: (tabId: string, text: string) => void;
-  setSessionStatus: (tabId: string, status: SessionStatus) => void;
-  setActivityStatus: (tabId: string, status: ActivityStatus) => void;
+  setSessionStatus: ((tabId: string, status: SessionStatus) => void) & ((status: SessionStatus) => void);
+  setActivityStatus: ((tabId: string, status: ActivityStatus) => void) & ((status: ActivityStatus) => void);
   /** Clear messages and UI state but PRESERVE sessionMeta (for session reload) */
-  clearMessages: (tabId: string) => void;
+  clearMessages: ((tabId: string) => void) & (() => void);
   /** Full reset: clear everything including sessionMeta (for new session / /clear) */
   resetTab: (tabId: string) => void;
-  setSessionMeta: (tabId: string, meta: Partial<SessionMeta>) => void;
-  setInputDraft: (tabId: string, text: string) => void;
-  setPendingAttachments: (tabId: string, files: FileAttachment[]) => void;
-  addPendingMessage: (tabId: string, text: string) => void;
-  flushPendingMessages: (tabId: string) => string[];
-  clearPendingMessages: (tabId: string) => void;
-  rewindToTurn: (tabId: string, startMsgIdx: number) => void;
-  setInteractionState: (tabId: string, msgId: string, state: InteractionState, error?: string) => void;
-  getActiveInteraction: (tabId: string) => ChatMessage | undefined;
+  setSessionMeta: ((tabId: string, meta: Partial<SessionMeta>) => void) & ((meta: Partial<SessionMeta>) => void);
+  setInputDraft: ((tabId: string, text: string) => void) & ((text: string) => void);
+  setPendingAttachments: ((tabId: string, files: FileAttachment[]) => void) & ((files: FileAttachment[]) => void);
+  addPendingMessage: ((tabId: string, text: string) => void) & ((text: string) => void);
+  flushPendingMessages: ((tabId: string) => string[]) & (() => string[]);
+  clearPendingMessages: ((tabId: string) => void) & (() => void);
+  rewindToTurn: ((tabId: string, startMsgIdx: number) => void) & ((startMsgIdx: number) => void);
+  setInteractionState: ((tabId: string, msgId: string, state: InteractionState, error?: string) => void) & ((msgId: string, state: InteractionState, error?: string) => void);
+  getActiveInteraction: ((tabId: string) => ChatMessage | undefined) & (() => ChatMessage | undefined);
 
   // --- Tab lifecycle ---
   ensureTab: (tabId: string) => void;
