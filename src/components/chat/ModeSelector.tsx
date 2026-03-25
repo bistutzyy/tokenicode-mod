@@ -1,6 +1,7 @@
 import { type ReactNode, useState, useRef, useEffect } from 'react';
 import { useSettingsStore, type SessionMode } from '../../stores/settingsStore';
 import { useChatStore, generateMessageId } from '../../stores/chatStore';
+import { useSessionStore } from '../../stores/sessionStore';
 import { useT } from '../../lib/i18n';
 
 const MODES: { id: SessionMode; labelKey: string; icon: ReactNode }[] = [
