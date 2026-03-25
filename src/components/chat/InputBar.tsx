@@ -878,6 +878,18 @@ export function InputBar() {
             // System message already inserted by ModelSelector — no duplicate here.
             // Keep sessionId so we attempt resume (preserving context).
             setSessionMeta(tabId, { stdinId: undefined, spawnedModel: undefined, modelSwitched: true, modelSwitchPendingText: text });
+            // Clean thinking blocks from history to avoid signature mismatch on resume.
+            // Thinking signatures are model-specific; resuming with a different model
+            // causes the API to reject the request (400).
+            useChatStore.setState((state) => {
+              const tab = state.tabs.get(tabId);
+              if (!tab) return {};
+              const cleanedMessages = tab.messages.filter(m => m.type !== 'thinking');
+              if (cleanedMessages.length === tab.messages.length) return {}; // nothing to clean
+              const newTabs = new Map(state.tabs);
+              newTabs.set(tabId, { ...tab, messages: cleanedMessages });
+              return { tabs: newTabs, sessionCache: newTabs };
+            });
             stdinId = undefined;
           } else {
           // ===== Send via stdin to existing persistent process (pre-warmed or follow-up) =====
