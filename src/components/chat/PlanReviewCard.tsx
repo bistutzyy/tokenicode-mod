@@ -98,7 +98,9 @@ export function PlanReviewCard({ message, floating }: Props) {
       setSessionModeLocal('code');
     }
 
-    useChatStore.getState().updateMessage(message.id, { resolved: true, interactionState: 'resolved' });
+    if (planTabId) {
+      useChatStore.getState().updateMessage(planTabId, message.id, { resolved: true, interactionState: 'resolved' });
+    }
     window.dispatchEvent(new CustomEvent('tokenicode:plan-execute'));
   }, [isResolved, approving, message.id, message.permissionData]);
 
