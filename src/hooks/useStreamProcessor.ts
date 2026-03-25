@@ -1787,7 +1787,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         if (remainingPending.length > 0) {
           const draft = useChatStore.getState().getTab(tabId)?.inputDraft;
           const pendingText = remainingPending.join('\n\n');
-          useChatStore.getState().setInputDraft(
+          useChatStore.getState().setInputDraft(tabId,
             draft ? `${draft}\n\n${pendingText}` : pendingText
           );
           useChatStore.getState().clearPendingMessages();
