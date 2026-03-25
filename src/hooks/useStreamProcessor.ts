@@ -1108,7 +1108,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
               // Only create plan_review card in Plan mode.
               // In Code mode the CLI handles ExitPlanMode natively.
               // In Bypass mode the Rust backend auto-approves — no UI card needed.
-              if (useSettingsStore.getState().sessionMode === 'plan') {
+              if (getEffectiveMode(useChatStore.getState().getTab(tabId)?.sessionMeta) === 'plan') {
                 const currentMessages = (useChatStore.getState().getTab(tabId)?.messages ?? []);
 
                 // Guard: skip if already approved (replay)
