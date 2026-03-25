@@ -799,7 +799,8 @@ async function startDraftSession(folderPath: string) {
     });
 
     // Store stdinId so InputBar can send the first message via stdin
-    useChatStore.getState().setSessionMeta({
+    useChatStore.getState().ensureTab(draftId);
+    useChatStore.getState().setSessionMeta(draftId, {
       sessionId: session.session_id,
       stdinId: preWarmId,
       envFingerprint: envFingerprint(),
