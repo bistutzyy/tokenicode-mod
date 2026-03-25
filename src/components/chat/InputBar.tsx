@@ -269,13 +269,14 @@ export function InputBar() {
   const { files, setFiles, isProcessing, addFiles, removeFile, clearFiles } = useFileAttachments();
 
   // Sync files → store.pendingAttachments so tab switch can persist them
-  const setPendingAttachments = useChatStore((s) => s.setPendingAttachments);
+  const setPendingAttachmentsStore = useChatStore((s) => s.setPendingAttachments);
   useEffect(() => {
-    setPendingAttachments(files);
-  }, [files, setPendingAttachments]);
+    const tid = useSessionStore.getState().selectedSessionId;
+    if (tid) setPendingAttachmentsStore(tid, files);
+  }, [files, setPendingAttachmentsStore]);
 
   // Restore files from store when tab switches back (pendingAttachments → local files)
-  const pendingAttachments = useChatStore((s) => s.pendingAttachments);
+  const pendingAttachments = useActiveTab((t) => t.pendingAttachments);
   const prevAttachmentsRef = useRef(pendingAttachments);
   useEffect(() => {
     // Only restore when store value changes externally (e.g. restoreFromCache)
