@@ -179,6 +179,32 @@ interface ChatState {
   /** All tab data — the ONLY place session data lives */
   tabs: Map<string, TabSession>;
 
+  // --- Backward compat: top-level getters that read from active tab ---
+  // These allow `useChatStore(s => s.messages)` to keep working during gradual migration.
+  /** @deprecated Use useActiveTab(t => t.messages) instead */
+  readonly messages: ChatMessage[];
+  /** @deprecated Use useActiveTab(t => t.isStreaming) instead */
+  readonly isStreaming: boolean;
+  /** @deprecated Use useActiveTab(t => t.partialText) instead */
+  readonly partialText: string;
+  /** @deprecated Use useActiveTab(t => t.partialThinking) instead */
+  readonly partialThinking: string;
+  /** @deprecated Use useActiveTab(t => t.sessionStatus) instead */
+  readonly sessionStatus: SessionStatus;
+  /** @deprecated Use useActiveTab(t => t.sessionMeta) instead */
+  readonly sessionMeta: SessionMeta;
+  /** @deprecated Use useActiveTab(t => t.activityStatus) instead */
+  readonly activityStatus: ActivityStatus;
+  /** @deprecated Use useActiveTab(t => t.inputDraft) instead */
+  readonly inputDraft: string;
+  /** @deprecated Use useActiveTab(t => t.pendingAttachments) instead */
+  readonly pendingAttachments: FileAttachment[];
+  /** @deprecated Use useActiveTab(t => t.pendingUserMessages) instead */
+  readonly pendingUserMessages: string[];
+
+  /** @deprecated Use resetTab(tabId) instead */
+  resetSession: () => void;
+
   // --- Tab-level operations (all take tabId) ---
   addMessage: (tabId: string, message: ChatMessage) => void;
   updateMessage: (tabId: string, id: string, updates: Partial<ChatMessage>) => void;
