@@ -1105,8 +1105,8 @@ export function InputBar() {
       if (sessionStdinId) {
         useSessionStore.getState().unregisterStdinTab(sessionStdinId);
       }
-      setSessionStatus('error');
-      addMessage({
+      setSessionStatus(tabId, 'error');
+      addMessage(tabId, {
         id: generateMessageId(),
         role: 'system',
         type: 'text',
