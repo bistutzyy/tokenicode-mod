@@ -324,10 +324,13 @@ export function InputBar() {
       if (canRewind) {
         setShowRewindPanel(true);
       } else {
-        useChatStore.getState().addMessage({
-          id: generateMessageId(), role: 'system', type: 'text',
-          content: t('rewind.disabled'), commandType: 'error', timestamp: Date.now(),
-        });
+        const tid = useSessionStore.getState().selectedSessionId;
+        if (tid) {
+          useChatStore.getState().addMessage(tid, {
+            id: generateMessageId(), role: 'system', type: 'text',
+            content: t('rewind.disabled'), commandType: 'error', timestamp: Date.now(),
+          });
+        }
       }
     };
     window.addEventListener('tokenicode:rewind', handler);
@@ -348,10 +351,13 @@ export function InputBar() {
         if (canRewind) {
           setShowRewindPanel(true);
         } else {
-          useChatStore.getState().addMessage({
-            id: generateMessageId(), role: 'system', type: 'text',
-            content: t('rewind.disabled'), commandType: 'error', timestamp: Date.now(),
-          });
+          const tid = useSessionStore.getState().selectedSessionId;
+          if (tid) {
+            useChatStore.getState().addMessage(tid, {
+              id: generateMessageId(), role: 'system', type: 'text',
+              content: t('rewind.disabled'), commandType: 'error', timestamp: Date.now(),
+            });
+          }
         }
       } else {
         lastEscTime.current = now;

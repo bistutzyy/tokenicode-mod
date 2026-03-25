@@ -179,53 +179,26 @@ interface ChatState {
   /** All tab data — the ONLY place session data lives */
   tabs: Map<string, TabSession>;
 
-  // --- Backward compat: top-level getters that read from active tab ---
-  // These allow `useChatStore(s => s.messages)` to keep working during gradual migration.
-  /** @deprecated Use useActiveTab(t => t.messages) instead */
-  readonly messages: ChatMessage[];
-  /** @deprecated Use useActiveTab(t => t.isStreaming) instead */
-  readonly isStreaming: boolean;
-  /** @deprecated Use useActiveTab(t => t.partialText) instead */
-  readonly partialText: string;
-  /** @deprecated Use useActiveTab(t => t.partialThinking) instead */
-  readonly partialThinking: string;
-  /** @deprecated Use useActiveTab(t => t.sessionStatus) instead */
-  readonly sessionStatus: SessionStatus;
-  /** @deprecated Use useActiveTab(t => t.sessionMeta) instead */
-  readonly sessionMeta: SessionMeta;
-  /** @deprecated Use useActiveTab(t => t.activityStatus) instead */
-  readonly activityStatus: ActivityStatus;
-  /** @deprecated Use useActiveTab(t => t.inputDraft) instead */
-  readonly inputDraft: string;
-  /** @deprecated Use useActiveTab(t => t.pendingAttachments) instead */
-  readonly pendingAttachments: FileAttachment[];
-  /** @deprecated Use useActiveTab(t => t.pendingUserMessages) instead */
-  readonly pendingUserMessages: string[];
-
-  /** @deprecated Use resetTab(tabId) instead */
-  resetSession: () => void;
-
-  // --- Tab-level operations (all take tabId as first arg) ---
-  // Backward compat: methods also accept old v1 signatures (without tabId) and auto-infer active tab.
-  addMessage: ((tabId: string, message: ChatMessage) => void) & ((message: ChatMessage) => void);
-  updateMessage: ((tabId: string, id: string, updates: Partial<ChatMessage>) => void) & ((id: string, updates: Partial<ChatMessage>) => void);
+  // --- Tab-level operations (all take tabId) ---
+  addMessage: (tabId: string, message: ChatMessage) => void;
+  updateMessage: (tabId: string, id: string, updates: Partial<ChatMessage>) => void;
   updatePartialMessage: (tabId: string, text: string) => void;
   updatePartialThinking: (tabId: string, text: string) => void;
-  setSessionStatus: ((tabId: string, status: SessionStatus) => void) & ((status: SessionStatus) => void);
-  setActivityStatus: ((tabId: string, status: ActivityStatus) => void) & ((status: ActivityStatus) => void);
+  setSessionStatus: (tabId: string, status: SessionStatus) => void;
+  setActivityStatus: (tabId: string, status: ActivityStatus) => void;
   /** Clear messages and UI state but PRESERVE sessionMeta (for session reload) */
-  clearMessages: ((tabId: string) => void) & (() => void);
+  clearMessages: (tabId: string) => void;
   /** Full reset: clear everything including sessionMeta (for new session / /clear) */
   resetTab: (tabId: string) => void;
-  setSessionMeta: ((tabId: string, meta: Partial<SessionMeta>) => void) & ((meta: Partial<SessionMeta>) => void);
-  setInputDraft: ((tabId: string, text: string) => void) & ((text: string) => void);
-  setPendingAttachments: ((tabId: string, files: FileAttachment[]) => void) & ((files: FileAttachment[]) => void);
-  addPendingMessage: ((tabId: string, text: string) => void) & ((text: string) => void);
-  flushPendingMessages: ((tabId: string) => string[]) & (() => string[]);
-  clearPendingMessages: ((tabId: string) => void) & (() => void);
-  rewindToTurn: ((tabId: string, startMsgIdx: number) => void) & ((startMsgIdx: number) => void);
-  setInteractionState: ((tabId: string, msgId: string, state: InteractionState, error?: string) => void) & ((msgId: string, state: InteractionState, error?: string) => void);
-  getActiveInteraction: ((tabId: string) => ChatMessage | undefined) & (() => ChatMessage | undefined);
+  setSessionMeta: (tabId: string, meta: Partial<SessionMeta>) => void;
+  setInputDraft: (tabId: string, text: string) => void;
+  setPendingAttachments: (tabId: string, files: FileAttachment[]) => void;
+  addPendingMessage: (tabId: string, text: string) => void;
+  flushPendingMessages: (tabId: string) => string[];
+  clearPendingMessages: (tabId: string) => void;
+  rewindToTurn: (tabId: string, startMsgIdx: number) => void;
+  setInteractionState: (tabId: string, msgId: string, state: InteractionState, error?: string) => void;
+  getActiveInteraction: (tabId: string) => ChatMessage | undefined;
 
   // --- Tab lifecycle ---
   ensureTab: (tabId: string) => void;
@@ -288,7 +261,6 @@ function createTab(tabId: string): TabSession {
 /** Maximum number of tabs kept in memory. LRU eviction applies to idle tabs. */
 const MAX_CACHE = 8;
 
-
 /**
  * Immutable Map update helper: get tab, apply updater, return new Map.
  * Returns undefined if tab doesn't exist (caller should return {} to skip).
@@ -335,41 +307,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   sessionCache: new Map(),   // alias — always kept in sync with tabs
 
   // ------------------------------------------------------------------
-  // Backward compat: top-level getters that proxy to active tab
-  // These are DERIVED — updated via _syncActiveTabFields() after every tab mutation.
-  // ------------------------------------------------------------------
-  get messages() { return getActiveTabState().messages; },
-  get isStreaming() { return getActiveTabState().isStreaming; },
-  get partialText() { return getActiveTabState().partialText; },
-  get partialThinking() { return getActiveTabState().partialThinking; },
-  get sessionStatus() { return getActiveTabState().sessionStatus; },
-  get sessionMeta() { return getActiveTabState().sessionMeta; },
-  get activityStatus() { return getActiveTabState().activityStatus; },
-  get inputDraft() { return getActiveTabState().inputDraft; },
-  get pendingAttachments() { return getActiveTabState().pendingAttachments; },
-  get pendingUserMessages() { return getActiveTabState().pendingUserMessages; },
-
-  /** @deprecated Use resetTab(tabId) instead */
-  resetSession: () => {
-    const tabId = useSessionStore.getState().selectedSessionId;
-    if (tabId) {
-      set((state) => {
-        const result = updateTab(state.tabs, tabId, () => createTab(tabId));
-        return result ?? {};
-      });
-    }
-  },
-
-  // ------------------------------------------------------------------
   // Tab-level operations
   // ------------------------------------------------------------------
 
-  addMessage: (tabIdOrMessage: any, maybeMessage?: any) => {
-    // Backward compat: addMessage(msg) → addMessage(activeTabId, msg)
-    const isV1 = typeof tabIdOrMessage !== 'string' || !maybeMessage;
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrMessage;
-    const message = isV1 ? tabIdOrMessage : maybeMessage;
-    if (!tabId) return;
+  addMessage: (tabId, message) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => {
         // De-duplicate: if a message with the same ID already exists, update it
@@ -385,16 +326,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         // in the assistant message handler when a text block supersedes streaming.
       });
       return result ?? {};
-    });
-  },
+    }),
 
-  updateMessage: (tabIdOrId: any, idOrUpdates: any, maybeUpdates?: any) => {
-    // Backward compat: updateMessage(id, updates) → updateMessage(activeTabId, id, updates)
-    const isV1 = maybeUpdates === undefined && typeof idOrUpdates === 'object';
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrId;
-    const id = isV1 ? tabIdOrId : idOrUpdates;
-    const updates = isV1 ? idOrUpdates : maybeUpdates;
-    if (!tabId) return;
+  updateMessage: (tabId, id, updates) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
@@ -403,8 +337,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         ),
       }));
       return result ?? {};
-    });
-  },
+    }),
 
   updatePartialMessage: (tabId, text) =>
     set((state) => {
@@ -428,12 +361,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       return result ?? {};
     }),
 
-  setSessionStatus: (tabIdOrStatus: any, maybeStatus?: any) => {
-    // Backward compat: setSessionStatus(status) → setSessionStatus(activeTabId, status)
-    const isV1 = maybeStatus === undefined;
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrStatus;
-    const status = isV1 ? tabIdOrStatus : maybeStatus;
-    if (!tabId) return;
+  setSessionStatus: (tabId, status) => {
     // Sync running state to sessionStore for tab indicators
     useSessionStore.getState().setSessionRunning(tabId, status === 'running');
     set((state) => {
@@ -454,23 +382,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     });
   },
 
-  setActivityStatus: (tabIdOrStatus: any, maybeStatus?: any) => {
-    const isV1 = maybeStatus === undefined && typeof tabIdOrStatus === 'object';
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrStatus;
-    const status = isV1 ? tabIdOrStatus : maybeStatus;
-    if (!tabId) return;
+  setActivityStatus: (tabId, status) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
         activityStatus: status,
       }));
       return result ?? {};
-    });
-  },
+    }),
 
-  clearMessages: (tabIdOrUndef?: any) => {
-    const tabId = tabIdOrUndef || useSessionStore.getState().selectedSessionId || '';
-    if (!tabId) return;
+  clearMessages: (tabId) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
@@ -486,8 +407,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         pendingUserMessages: [],
       }));
       return result ?? {};
-    });
-  },
+    }),
 
   resetTab: (tabId) =>
     set((state) => {
@@ -495,66 +415,43 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       return result ?? {};
     }),
 
-  setSessionMeta: (tabIdOrMeta: any, maybeMeta?: any) => {
-    const isV1 = maybeMeta === undefined && typeof tabIdOrMeta === 'object';
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrMeta;
-    const meta = isV1 ? tabIdOrMeta : maybeMeta;
-    if (!tabId) return;
+  setSessionMeta: (tabId, meta) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
         sessionMeta: { ...tab.sessionMeta, ...meta },
       }));
       return result ?? {};
-    });
-  },
+    }),
 
-  setInputDraft: (tabIdOrText: any, maybeText?: any) => {
-    const isV1 = maybeText === undefined;
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrText;
-    const text = isV1 ? tabIdOrText : maybeText;
-    if (!tabId) return;
+  setInputDraft: (tabId, text) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
         inputDraft: text,
       }));
       return result ?? {};
-    });
-  },
+    }),
 
-  setPendingAttachments: (tabIdOrFiles: any, maybeFiles?: any) => {
-    const isV1 = maybeFiles === undefined && Array.isArray(tabIdOrFiles);
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrFiles;
-    const files = isV1 ? tabIdOrFiles : maybeFiles;
-    if (!tabId) return;
+  setPendingAttachments: (tabId, files) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
         pendingAttachments: files,
       }));
       return result ?? {};
-    });
-  },
+    }),
 
-  addPendingMessage: (tabIdOrText: any, maybeText?: any) => {
-    const isV1 = maybeText === undefined;
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrText;
-    const text = isV1 ? tabIdOrText : maybeText;
-    if (!tabId) return;
+  addPendingMessage: (tabId, text) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
         pendingUserMessages: [...tab.pendingUserMessages, text],
       }));
       return result ?? {};
-    });
-  },
+    }),
 
-  flushPendingMessages: (tabIdOrUndef?: any) => {
-    const tabId = (typeof tabIdOrUndef === 'string' ? tabIdOrUndef : null)
-      || useSessionStore.getState().selectedSessionId || '';
-    if (!tabId) return [];
+  flushPendingMessages: (tabId) => {
     const tab = get().tabs.get(tabId);
     if (!tab) return [];
     const msgs = tab.pendingUserMessages;
@@ -568,24 +465,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     return msgs;
   },
 
-  clearPendingMessages: (tabIdOrUndef?: any) => {
-    const tabId = (typeof tabIdOrUndef === 'string' ? tabIdOrUndef : null)
-      || useSessionStore.getState().selectedSessionId || '';
-    if (!tabId) return;
+  clearPendingMessages: (tabId) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
         pendingUserMessages: [],
       }));
       return result ?? {};
-    });
-  },
+    }),
 
-  rewindToTurn: (tabIdOrIdx: any, maybeIdx?: any) => {
-    const isV1 = maybeIdx === undefined && typeof tabIdOrIdx === 'number';
-    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrIdx;
-    const startMsgIdx = isV1 ? tabIdOrIdx : maybeIdx;
-    if (!tabId) return;
+  rewindToTurn: (tabId, startMsgIdx) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => {
         // Guard against invalid index — if out of bounds, keep messages intact
@@ -610,26 +499,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         };
       });
       return result ?? {};
-    });
-  },
+    }),
 
-  setInteractionState: (tabIdOrMsgId: any, msgIdOrState: any, stateOrError?: any, maybeError?: any) => {
-    // Backward compat: setInteractionState(msgId, state, error?) → setInteractionState(activeTabId, msgId, state, error?)
-    const isV1 = typeof stateOrError === 'string' || stateOrError === undefined;
-    let tabId: string, msgId: string, interactionState: InteractionState, error: string | undefined;
-    if (isV1 && typeof msgIdOrState !== 'string') {
-      // This is the old v1 pattern: setInteractionState(msgId, state, error?)
-      tabId = useSessionStore.getState().selectedSessionId ?? '';
-      msgId = tabIdOrMsgId;
-      interactionState = msgIdOrState;
-      error = stateOrError;
-    } else {
-      tabId = tabIdOrMsgId;
-      msgId = msgIdOrState;
-      interactionState = stateOrError;
-      error = maybeError;
-    }
-    if (!tabId) return;
+  setInteractionState: (tabId, msgId, interactionState, error) =>
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
@@ -643,12 +515,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         ),
       }));
       return result ?? {};
-    });
-  },
+    }),
 
-  getActiveInteraction: (tabIdOrUndef?: any) => {
-    const tabId = (typeof tabIdOrUndef === 'string' ? tabIdOrUndef : null)
-      || useSessionStore.getState().selectedSessionId || '';
+  getActiveInteraction: (tabId) => {
     const tab = get().tabs.get(tabId);
     if (!tab) return undefined;
     // Return the last message with an active (pending) interaction
