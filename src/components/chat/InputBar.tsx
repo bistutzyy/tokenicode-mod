@@ -1431,11 +1431,14 @@ export function InputBar() {
           {isRunning && (
             <button
               onClick={async () => {
-                const sid = useChatStore.getState().sessionMeta.stdinId;
+                const stopTabId = useSessionStore.getState().selectedSessionId;
+                const sid = getActiveTabState().sessionMeta.stdinId;
                 // Immediately clear stdinId so no further messages are sent to the dead process
-                useChatStore.getState().setSessionMeta({ stdinId: undefined });
-                useChatStore.getState().setSessionStatus('completed');
-                useChatStore.getState().setActivityStatus({ phase: 'completed' });
+                if (stopTabId) {
+                  useChatStore.getState().setSessionMeta(stopTabId, { stdinId: undefined });
+                  useChatStore.getState().setSessionStatus(stopTabId, 'completed');
+                  useChatStore.getState().setActivityStatus(stopTabId, { phase: 'completed' });
+                }
                 if (sid) {
                   await bridge.killSession(sid).catch(() => {});
                   // Don't unlisten immediately — let process_exit fire naturally to clean up.
