@@ -524,6 +524,68 @@ fn find_claude_binary() -> Option<String> {
         }
     }
 
+    // Phase 3: detect broken symlinks and log warnings.
+    // A renamed project folder can leave ~/.local/bin/claude pointing at nothing.
+    // symlink_metadata succeeds for broken symlinks (unlike metadata/exists).
+    #[cfg(not(target_os = "windows"))]
+    {
+        for dir in &dirs {
+            for name in names {
+                let candidate = std::path::Path::new(dir).join(name);
+                if let Ok(meta) = std::fs::symlink_metadata(&candidate) {
+                    if meta.file_type().is_symlink() && !candidate.exists() {
+                        eprintln!(
+                            "[find_claude_binary] WARNING: broken symlink at '{}' \
+                             (target no longer exists). Consider re-running `npm i -g @anthropic-ai/claude-code`.",
+                            candidate.display()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    // Phase 4: direct `which`/`where` fallback — resolves the binary even if
+    // the directory scan missed it (e.g. installed via a package manager whose
+    // bin dir isn't in our search list).
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = std::process::Command::new("which")
+            .arg("claude")
+            .stdin(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .output()
+        {
+            if output.status.success() {
+                let p = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !p.is_empty() && std::path::Path::new(&p).exists() {
+                    eprintln!("[find_claude_binary] found via `which` fallback: {}", p);
+                    return Some(p);
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("cmd")
+            .args(["/C", "where", "claude"])
+            .stdin(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .creation_flags(0x08000000)
+            .output()
+        {
+            if output.status.success() {
+                if let Some(line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+                    let p = line.trim().to_string();
+                    if !p.is_empty() && std::path::Path::new(&p).exists() {
+                        eprintln!("[find_claude_binary] found via `where` fallback: {}", p);
+                        return Some(p);
+                    }
+                }
+            }
+        }
+    }
+
     None
 }
 
