@@ -127,14 +127,14 @@ export function useRewind() {
     try {
       switch (action) {
         case 'restore_all': {
-          useChatStore.getState().rewindToTurn(turn.startMsgIdx);
+          useChatStore.getState().rewindToTurn(tid, turn.startMsgIdx);
           resetSession();
-          useChatStore.getState().setInputDraft(originalUserText);
+          useChatStore.getState().setInputDraft(tid, originalUserText);
 
           const successMsg = fileRestoreOk
             ? t('rewind.successAll').replace('{n}', String(turn.index))
             : t('rewind.successAllNoFiles').replace('{n}', String(turn.index));
-          useChatStore.getState().addMessage({
+          useChatStore.getState().addMessage(tid, {
             id: generateMessageId(),
             role: 'system',
             type: 'text',
@@ -148,11 +148,11 @@ export function useRewind() {
 
         case 'restore_conversation': {
           // Only restore conversation (keep code as-is) — instant, no CLI call
-          useChatStore.getState().rewindToTurn(turn.startMsgIdx);
+          useChatStore.getState().rewindToTurn(tid, turn.startMsgIdx);
           resetSession();
-          useChatStore.getState().setInputDraft(originalUserText);
+          useChatStore.getState().setInputDraft(tid, originalUserText);
 
-          useChatStore.getState().addMessage({
+          useChatStore.getState().addMessage(tid, {
             id: generateMessageId(),
             role: 'system',
             type: 'text',
@@ -167,12 +167,12 @@ export function useRewind() {
         case 'restore_code': {
           // Don't truncate messages — keep full conversation
           resetSession();
-          useChatStore.getState().setInputDraft(originalUserText);
+          useChatStore.getState().setInputDraft(tid, originalUserText);
 
           const codeMsg = fileRestoreOk
             ? t('rewind.successCode').replace('{n}', String(turn.index))
             : t('rewind.codeRestoreFailed');
-          useChatStore.getState().addMessage({
+          useChatStore.getState().addMessage(tid, {
             id: generateMessageId(),
             role: 'system',
             type: 'text',
