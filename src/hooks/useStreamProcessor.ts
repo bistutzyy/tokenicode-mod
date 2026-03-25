@@ -1698,7 +1698,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         // Bug C fix (#27): Clear stuck pendingCommandMsgId (e.g., /compact without result)
         const exitPendingCmd = useChatStore.getState().getTab(tabId)?.sessionMeta.pendingCommandMsgId;
         if (exitPendingCmd) {
-          useChatStore.getState().updateMessage(exitPendingCmd, { commandCompleted: true });
+          useChatStore.getState().updateMessage(tabId, exitPendingCmd, { commandCompleted: true });
           useChatStore.getState().setSessionMeta(tabId, { pendingCommandMsgId: undefined });
         }
 
