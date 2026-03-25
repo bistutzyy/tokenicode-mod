@@ -933,14 +933,14 @@ export function InputBar() {
         // If we have an existing sessionId (loaded historical session), resume it.
         // Only use it as resume_session_id if it looks like a real CLI session ID (UUID),
         // not a desk-generated ID like "desk_xxx".
-        const rawSessionId = useChatStore.getState().sessionMeta.sessionId;
+        const rawSessionId = getActiveTabState().sessionMeta.sessionId;
         const existingSessionId = rawSessionId && !rawSessionId.startsWith('desk_')
           ? rawSessionId
           : undefined;
 
         // TK-329 fix: only clean up THIS tab's old stdinId listener, not the global singleton.
         // The old __claudeUnlisten global could kill another tab's active listener.
-        const oldStdinId = useChatStore.getState().sessionMeta.stdinId;
+        const oldStdinId = getActiveTabState().sessionMeta.stdinId;
         if (oldStdinId && (window as any).__claudeUnlisteners?.[oldStdinId]) {
           (window as any).__claudeUnlisteners[oldStdinId]();
           delete (window as any).__claudeUnlisteners[oldStdinId];
