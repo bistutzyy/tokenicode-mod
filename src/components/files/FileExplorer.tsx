@@ -8,6 +8,7 @@ import { isMac } from '../../lib/platform';
 import { useT } from '../../lib/i18n';
 import { startTreeDrag, moveTreeDrag, endTreeDrag } from '../../lib/drag-state';
 import { useChatStore } from '../../stores/chatStore';
+import { useSessionStore } from '../../stores/sessionStore';
 import { FileIcon } from '../shared/FileIcon';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { showToast } from '../shared/Toast';
