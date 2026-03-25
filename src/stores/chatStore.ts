@@ -398,9 +398,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         // in the assistant message handler when a text block supersedes streaming.
       });
       return result ?? {};
-    }),
+    });
+  },
 
-  updateMessage: (tabId, id, updates) =>
+  updateMessage: (tabIdOrId: any, idOrUpdates: any, maybeUpdates?: any) => {
+    // Backward compat: updateMessage(id, updates) → updateMessage(activeTabId, id, updates)
+    const isV1 = maybeUpdates === undefined && typeof idOrUpdates === 'object';
+    const tabId = isV1 ? (useSessionStore.getState().selectedSessionId ?? '') : tabIdOrId;
+    const id = isV1 ? tabIdOrId : idOrUpdates;
+    const updates = isV1 ? idOrUpdates : maybeUpdates;
+    if (!tabId) return;
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
@@ -409,7 +416,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         ),
       }));
       return result ?? {};
-    }),
+    });
+  },
 
   updatePartialMessage: (tabId, text) =>
     set((state) => {
