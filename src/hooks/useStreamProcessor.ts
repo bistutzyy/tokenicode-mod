@@ -918,7 +918,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
 
         // Track input tokens from message_start (per-turn + cumulative total)
         if (evt.type === 'message_start' && evt.message?.usage?.input_tokens) {
-          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta;
+          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta ?? {};
           const delta = evt.message.usage.input_tokens;
           setSessionMeta({
             inputTokens: (meta.inputTokens || 0) + delta,
@@ -928,7 +928,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
 
         // Track output tokens from message_delta (per-turn + cumulative total)
         if (evt.type === 'message_delta' && evt.usage?.output_tokens) {
-          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta;
+          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta ?? {};
           const delta = evt.usage.output_tokens;
           setSessionMeta({
             outputTokens: (meta.outputTokens || 0) + delta,
@@ -1322,7 +1322,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         // the session. If the new provider/model rejects the old thinking block signatures,
         // we automatically retry without resume to preserve UX continuity.
         if (msg.subtype !== 'success') {
-          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta;
+          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta ?? {};
           // Build a combined error string from all possible error fields
           const errorText = [msg.result, msg.error, msg.content]
             .filter(Boolean)
@@ -1547,7 +1547,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         {
           // Correct cumulative totals for any drift between streaming
           // accumulation and the authoritative result values.
-          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta;
+          const meta = useChatStore.getState().getTab(tabId)?.sessionMeta ?? {};
           const resultInput = msg.usage?.input_tokens || 0;
           const resultOutput = msg.usage?.output_tokens || 0;
           const streamedInput = meta.inputTokens || 0;
@@ -1631,7 +1631,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           });
           // FI-4: Timeout fallback — if compact doesn't complete within 90s, auto-complete
           setTimeout(() => {
-            const meta = useChatStore.getState().getTab(tabId)?.sessionMeta;
+            const meta = useChatStore.getState().getTab(tabId)?.sessionMeta ?? {};
             if (meta.pendingCommandMsgId === compactMsgId) {
               useChatStore.getState().updateMessage(tabId, compactMsgId, {
                 commandCompleted: true,
