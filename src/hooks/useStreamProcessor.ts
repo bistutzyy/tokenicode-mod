@@ -887,7 +887,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         if (evt.type === 'content_block_start'
             && evt.content_block?.type === 'tool_use'
             && evt.content_block?.name === 'ExitPlanMode'
-            && useSettingsStore.getState().sessionMode === 'plan') {
+            && getEffectiveMode(useChatStore.getState().getTab(tabId)?.sessionMeta) === 'plan') {
           const currentMessages = (useChatStore.getState().getTab(tabId)?.messages ?? []);
 
           // Guard: if plan_review_current already exists and was resolved,
