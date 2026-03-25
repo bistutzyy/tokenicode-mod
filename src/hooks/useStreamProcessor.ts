@@ -1830,8 +1830,9 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
     } catch (err) {
       // P1-4: catch-all for unexpected errors in stream message processing
       console.error('[TOKENICODE] handleStreamMessage error:', err, 'msg:', msg?.type, msg?.subtype);
-      if (tabId) {
-        useChatStore.getState().addMessage(tabId, {
+      const errTabId = useSessionStore.getState().selectedSessionId;
+      if (errTabId) {
+        useChatStore.getState().addMessage(errTabId, {
           id: generateMessageId(),
           role: 'system',
           type: 'text',
