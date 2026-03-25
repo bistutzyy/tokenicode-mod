@@ -729,7 +729,8 @@ export function ChatPanel() {
 /** Start a new draft conversation for the given folder and pre-warm the CLI process */
 async function startDraftSession(folderPath: string) {
   useSettingsStore.getState().setWorkingDirectory(folderPath);
-  useChatStore.getState().resetSession();
+  const currentTab = useSessionStore.getState().selectedSessionId;
+  if (currentTab) useChatStore.getState().resetTab(currentTab);
 
   // Reuse existing draft tab if one is already selected, otherwise create a new one
   const currentTabId = useSessionStore.getState().selectedSessionId;
