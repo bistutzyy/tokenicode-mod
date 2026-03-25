@@ -596,9 +596,12 @@ export function FileExplorer() {
   }, [deleteTarget, refreshTree]);
 
   const handleInsertToChat = useCallback((path: string) => {
-    const currentDraft = useChatStore.getState().inputDraft;
+    const tabId = useSessionStore.getState().selectedSessionId;
+    if (!tabId) return;
+    const tab = useChatStore.getState().getTab(tabId);
+    const currentDraft = tab?.inputDraft ?? '';
     const prefix = currentDraft && !currentDraft.endsWith('\n') && !currentDraft.endsWith(' ') ? ' ' : '';
-    useChatStore.getState().setInputDraft(currentDraft + prefix + path);
+    useChatStore.getState().setInputDraft(tabId, currentDraft + prefix + path);
   }, []);
 
   const handleNewFile = useCallback((dir: string) => {
