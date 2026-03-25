@@ -805,14 +805,14 @@ export function InputBar() {
     }
 
     const turnStartedAt = Date.now();
-    setSessionStatus('running');
-    setSessionMeta({
+    setSessionStatus(tabId, 'running');
+    setSessionMeta(tabId, {
       turnStartTime: turnStartedAt,
       lastProgressAt: turnStartedAt,
       inputTokens: 0,
       outputTokens: 0,
     });
-    useChatStore.getState().setActivityStatus({ phase: 'thinking' });
+    useChatStore.getState().setActivityStatus(tabId, { phase: 'thinking' });
     lastStderrRef.current = ''; // Clear stale stderr before new turn
 
     // Initialize agent tracking — clear previous turn's agents (they may be from a
