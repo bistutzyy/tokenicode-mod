@@ -2439,7 +2439,7 @@ async fn list_sessions() -> Result<Vec<Value>, String> {
 /// from a session .jsonl file.
 /// Returns (preview, cwd, last_timestamp_ms) — cwd may be empty, timestamp may be 0.
 fn extract_session_info(path: &std::path::Path) -> (String, String, u64) {
-    use std::io::{BufRead, Read, Seek, SeekFrom};
+    use std::io::BufRead;
     let file = match std::fs::File::open(path) {
         Ok(f) => f,
         Err(_) => return (String::new(), String::new(), 0),
