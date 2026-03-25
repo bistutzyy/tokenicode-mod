@@ -1450,7 +1450,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           // Silently restart — no user message bubble
           silentRestartRef.current = true;
           setInputSync('Continue.');
-          useChatStore.getState().setActivityStatus({ phase: 'thinking' });
+          useChatStore.getState().setActivityStatus(tabId, { phase: 'thinking' });
           requestAnimationFrame(() => handleSubmitRef.current());
           break;
         }
