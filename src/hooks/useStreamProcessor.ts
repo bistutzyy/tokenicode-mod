@@ -1718,10 +1718,12 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
 
         // If the session was running and no assistant messages were received,
         // the process failed at startup. Show the last stderr error to the user.
-        const { sessionStatus: exitStatus, messages: exitMsgs } = useChatStore.getState();
+        const exitTabData = useChatStore.getState().getTab(tabId);
+        const exitStatus = exitTabData?.sessionStatus;
+        const exitMsgs = exitTabData?.messages ?? [];
         if (exitStatus === 'running') {
           const hasAssistantReply = exitMsgs.some(
-            (m) => m.role === 'assistant' && (m.type === 'text' || m.type === 'tool_use'),
+            (m: ChatMessage) => m.role === 'assistant' && (m.type === 'text' || m.type === 'tool_use'),
           );
           if (!hasAssistantReply) {
             if (lastStderrRef.current) {
