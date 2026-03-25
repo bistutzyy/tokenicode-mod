@@ -917,7 +917,7 @@ export function InputBar() {
               (window as any).__claudeUnlisteners[stdinId]();
               delete (window as any).__claudeUnlisteners[stdinId];
             }
-            setSessionMeta({ stdinId: undefined });
+            setSessionMeta(tabId, { stdinId: undefined });
             stdinId = undefined;
           }
           }
