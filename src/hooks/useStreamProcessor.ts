@@ -1196,11 +1196,11 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           const isToolResult = Array.isArray(content)
             && content.some((b: any) => b.type === 'tool_result');
           if (msg.uuid && !isToolResult) {
-            const { messages: allMsgs, updateMessage: um2 } = useChatStore.getState();
+            const allMsgs = useChatStore.getState().getTab(tabId)?.messages ?? [];
             for (let i = allMsgs.length - 1; i >= 0; i--) {
               if (allMsgs[i].role === 'user') {
                 console.log('[stream] Storing checkpointUuid:', msg.uuid, 'on msg:', allMsgs[i].id);
-                um2(allMsgs[i].id, { checkpointUuid: msg.uuid });
+                useChatStore.getState().updateMessage(tabId, allMsgs[i].id, { checkpointUuid: msg.uuid });
                 break;
               }
             }
