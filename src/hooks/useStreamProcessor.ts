@@ -1440,7 +1440,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           // Clean up dead process
           const oldStdinId = useChatStore.getState().getTab(tabId)?.sessionMeta.stdinId;
           if (oldStdinId) {
-            useChatStore.getState().setSessionMeta({ stdinId: undefined });
+            useChatStore.getState().setSessionMeta(tabId, { stdinId: undefined });
             bridge.killSession(oldStdinId).catch(() => {});
             if ((window as any).__claudeUnlisteners?.[oldStdinId]) {
               (window as any).__claudeUnlisteners[oldStdinId]();
