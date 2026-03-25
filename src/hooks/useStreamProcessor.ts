@@ -1259,7 +1259,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
 
         const toolUseId = msg.tool_use_id;
         if (toolUseId) {
-          const { messages: currentMessages, updateMessage } = useChatStore.getState();
+          const currentMessages = useChatStore.getState().getTab(tabId)?.messages ?? [];
           const parentMsg = currentMessages.find((m) => m.id === toolUseId);
           if (parentMsg) {
             const updates: Partial<ChatMessage> = { toolResultContent: resultContent };
@@ -1281,7 +1281,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
               }
             }
 
-            updateMessage(toolUseId, updates);
+            useChatStore.getState().updateMessage(tabId, toolUseId, updates);
             break;
           }
         }
