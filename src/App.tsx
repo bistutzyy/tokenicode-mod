@@ -118,7 +118,12 @@ function App() {
         closePendingRef.current = true;
         try {
           const { ask } = await import('@tauri-apps/plugin-dialog');
-          const confirmed = await ask(tRef.current('confirm.exit'), { title: APP_NAME, kind: 'warning' });
+          const confirmed = await ask(tRef.current('confirm.exit'), {
+            title: APP_NAME,
+            kind: 'warning',
+            okLabel: tRef.current('common.confirm'),
+            cancelLabel: tRef.current('common.cancel'),
+          });
           if (confirmed) {
             const { exit } = await import('@tauri-apps/plugin-process');
             await exit(0);
