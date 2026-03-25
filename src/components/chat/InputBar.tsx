@@ -323,7 +323,7 @@ export function InputBar() {
   // Rewind state
   const [showRewindPanel, setShowRewindPanel] = useState(false);
   const { showRewind, canRewind } = useRewind();
-  const lastEscTime = useRef(0);
+  // lastEscTime removed — double-Esc rewind disabled (#36/#71)
 
   // Listen for rewind event from /rewind command
   useEffect(() => {
