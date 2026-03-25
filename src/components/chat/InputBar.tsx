@@ -861,14 +861,15 @@ export function InputBar() {
 
       // Use stdinId (desk-generated) for stdin communication, not CLI's own sessionId.
       // stdinId exists when: (a) a pre-warmed process is waiting, or (b) follow-up in active session.
-      let stdinId = useChatStore.getState().sessionMeta.stdinId;
+      const submitTabState = getActiveTabState();
+      let stdinId = submitTabState.sessionMeta.stdinId;
       let sentViaStdin = false;
 
       if (stdinId) {
         // Check if API provider config changed since this process was spawned (TK-303).
         // If so, the pre-warmed process has stale env vars — kill it and spawn fresh.
         const currentFp = envFingerprint();
-        const sessionFp = useChatStore.getState().sessionMeta.envFingerprint;
+        const sessionFp = getActiveTabState().sessionMeta.envFingerprint;
         if (currentFp !== sessionFp) {
           console.warn('[TOKENICODE] API provider config changed, killing stale session');
           bridge.killSession(stdinId).catch(() => {});
@@ -879,13 +880,13 @@ export function InputBar() {
           // Keep sessionId so we attempt resume (preserving context).
           // If the resume fails due to thinking signature mismatch, the
           // stream error handler will auto-retry without resume.
-          setSessionMeta({ stdinId: undefined, envFingerprint: undefined, providerSwitched: true, providerSwitchPendingText: text });
+          setSessionMeta(tabId, { stdinId: undefined, envFingerprint: undefined, providerSwitched: true, providerSwitchPendingText: text });
           stdinId = undefined;
         } else {
           // Check if model changed since this process was spawned.
           // If so, kill the stale process and fall through to spawn a new one with --resume.
           const currentModel = resolveModelForProvider(selectedModel);
-          const spawnedModel = useChatStore.getState().sessionMeta.spawnedModel;
+          const spawnedModel = getActiveTabState().sessionMeta.spawnedModel;
           if (spawnedModel && currentModel !== spawnedModel) {
             const oldShort = MODEL_OPTIONS.find((m) => m.id === spawnedModel)?.short ?? spawnedModel;
             const newShort = MODEL_OPTIONS.find((m) => m.id === currentModel)?.short ?? currentModel;
@@ -897,7 +898,7 @@ export function InputBar() {
             }
             // System message already inserted by ModelSelector — no duplicate here.
             // Keep sessionId so we attempt resume (preserving context).
-            setSessionMeta({ stdinId: undefined, spawnedModel: undefined, modelSwitched: true, modelSwitchPendingText: text });
+            setSessionMeta(tabId, { stdinId: undefined, spawnedModel: undefined, modelSwitched: true, modelSwitchPendingText: text });
             stdinId = undefined;
           } else {
           // ===== Send via stdin to existing persistent process (pre-warmed or follow-up) =====
@@ -905,8 +906,8 @@ export function InputBar() {
             await bridge.sendStdin(stdinId, text);
             sentViaStdin = true;
             // Defensive: ensure spawnedModel is always recorded after first successful stdin send
-            if (!useChatStore.getState().sessionMeta.spawnedModel) {
-              setSessionMeta({ spawnedModel: resolveModelForProvider(selectedModel) });
+            if (!getActiveTabState().sessionMeta.spawnedModel) {
+              setSessionMeta(tabId, { spawnedModel: resolveModelForProvider(selectedModel) });
             }
           } catch (stdinErr) {
             // stdin write failed (broken pipe — process already exited).
