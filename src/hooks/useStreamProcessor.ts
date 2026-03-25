@@ -82,7 +82,6 @@ function _scheduleStreamFlush(stdinId: string) {
  *  If omitted, flush ALL buffers (backward compat). */
 export function flushStreamBuffer(stdinId?: string) {
   const ids = stdinId ? [stdinId] : Array.from(_streamBuffers.keys());
-  const activeTab = useSessionStore.getState().selectedSessionId;
 
   for (const id of ids) {
     const buf = _streamBuffers.get(id);
@@ -94,24 +93,19 @@ export function flushStreamBuffer(stdinId?: string) {
     }
     if (!buf.text && !buf.thinking) continue;
 
-    const ownerTab = useSessionStore.getState().getTabForStdin(id);
-    if (ownerTab && ownerTab !== activeTab) {
-      if (buf.text) {
-        useChatStore.getState().updatePartialInCache(ownerTab, buf.text);
-      }
-      if (buf.thinking) {
-        useChatStore.getState().updatePartialThinkingInCache(ownerTab, buf.thinking);
-      }
+    const tabId = useSessionStore.getState().getTabForStdin(id);
+    if (!tabId) {
       buf.text = '';
       buf.thinking = '';
       continue;
     }
+    const store = useChatStore.getState();
     if (buf.text) {
-      useChatStore.getState().updatePartialMessage(buf.text);
+      store.updatePartialMessage(tabId, buf.text);
       buf.text = '';
     }
     if (buf.thinking) {
-      useChatStore.getState().updatePartialThinking(buf.thinking);
+      store.updatePartialThinking(tabId, buf.thinking);
       buf.thinking = '';
     }
   }
