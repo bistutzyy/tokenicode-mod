@@ -1298,6 +1298,9 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
             : msg.output || '';
 
         const toolUseId = msg.tool_use_id;
+        // Auto-refresh file tree when file-mutating tools complete
+        _maybeRefreshFileTree(tabId, toolUseId, msg.tool_name);
+
         if (toolUseId) {
           const currentMessages = useChatStore.getState().getTab(tabId)?.messages ?? [];
           const parentMsg = currentMessages.find((m) => m.id === toolUseId);
