@@ -162,11 +162,17 @@ function PlanToggleButton() {
 export function InputBar() {
   const t = useT();
   const selectedSessionId = useSessionStore((s) => s.selectedSessionId);
-  const inputDraft = useChatStore((s) => s.inputDraft);
-  const setInputDraft = useChatStore((s) => s.setInputDraft);
+  const inputDraft = useActiveTab((t) => t.inputDraft);
+  const setInputDraftStore = useChatStore((s) => s.setInputDraft);
   // Local alias for the store-backed draft
   const input = inputDraft;
-  const setInput = setInputDraft;
+  const setInput = useCallback((text: string) => {
+    const tid = useSessionStore.getState().selectedSessionId;
+    if (tid) {
+      useChatStore.getState().ensureTab(tid);
+      setInputDraftStore(tid, text);
+    }
+  }, [setInputDraftStore]);
   const textareaRef = useRef<TiptapEditorHandle>(null);
   /** Sync both the Zustand store and the tiptap editor.
    *  Use this for all programmatic input changes (clear, set, etc.).
