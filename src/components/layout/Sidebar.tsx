@@ -88,8 +88,6 @@ export function Sidebar() {
 
         // Clear working directory so ChatPanel shows WelcomeScreen
         useSettingsStore.getState().setWorkingDirectory('');
-        const sidebarTabId = currentTabId; // captured above
-        if (sidebarTabId) useChatStore.getState().resetTab(sidebarTabId);
       }}
         className="w-full py-2.5 px-4 rounded-[20px] text-sm font-medium
           bg-accent hover:bg-accent-hover text-text-inverse
