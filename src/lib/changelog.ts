@@ -19,6 +19,46 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-03-25',
+    highlights: {
+      zh: ['多任务完全隔离 — chatStore v2 架构重写'],
+      en: ['Full multi-task isolation — chatStore v2 architecture rewrite'],
+    },
+    categories: [
+      {
+        label: { zh: '架构', en: 'Architecture' },
+        items: {
+          zh: [
+            '多任务完全隔离 — 每个 tab 拥有独立的消息、streaming 状态、session meta，不再共享顶层字段',
+            'chatStore v2 — 所有数据存储在 tabs Map 中，结构上不可能串台',
+          ],
+          en: [
+            'Full multi-task isolation — each tab owns independent messages, streaming state, session meta',
+            'chatStore v2 — all data stored in tabs Map, cross-tab contamination structurally impossible',
+          ],
+        },
+      },
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            '切换模型后 SESSION_ALREADY_ACTIVE 报错',
+            '后台 Agent Team 切换会话后静默终止',
+            '消息串台到其他对话窗口',
+            '同一 API 多窗口卡「思考中」',
+          ],
+          en: [
+            'SESSION_ALREADY_ACTIVE after model switch',
+            'Background Agent Team silently terminated on tab switch',
+            'Messages leaking to other chat windows',
+            'Multi-window stuck on "thinking" with same API',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.8.22',
     date: '2026-03-21',
     highlights: {
