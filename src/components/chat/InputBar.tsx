@@ -1265,11 +1265,12 @@ export function InputBar() {
     // stuck true and permanently blocking Enter. See issue #66.
     if (e.isComposing || e.keyCode === 229) return;
 
-    const pendingInteraction = useChatStore.getState().messages.find(
-      (m) => ['permission', 'question', 'plan_review'].includes(m.type) && !m.resolved,
+    const keyTabState = getActiveTabState();
+    const pendingInteraction = keyTabState.messages.find(
+      (m: import('../../stores/chatStore').ChatMessage) => ['permission', 'question', 'plan_review'].includes(m.type) && !m.resolved,
     );
     if (pendingInteraction) {
-      const inputText = (useChatStore.getState().inputDraft || '').trim();
+      const inputText = (keyTabState.inputDraft || '').trim();
       const isEmptyPlanApproval = pendingInteraction.type === 'plan_review' && !inputText;
       if (!isEmptyPlanApproval && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
         e.preventDefault();
