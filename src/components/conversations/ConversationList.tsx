@@ -328,18 +328,18 @@ export function ConversationList() {
         if (msg.toolResultContent) {
           // For messages that have tool results, add the base message first, then update
           const { toolResultContent, ...baseMsg } = msg;
-          addMessage(baseMsg);
-          useChatStore.getState().updateMessage(msg.id, { toolResultContent });
+          addMessage(sessionId, baseMsg);
+          useChatStore.getState().updateMessage(sessionId, msg.id, { toolResultContent });
         } else {
-          addMessage(msg);
+          addMessage(sessionId, msg);
         }
       }
 
-      setSessionStatus('completed');
+      setSessionStatus(sessionId, 'completed');
     } catch (err) {
       if (useSessionStore.getState().selectedSessionId !== sessionId) return;
-      setSessionStatus('error');
-      addMessage({
+      setSessionStatus(sessionId, 'error');
+      addMessage(sessionId, {
         id: generateMessageId(),
         role: 'system',
         type: 'text',
