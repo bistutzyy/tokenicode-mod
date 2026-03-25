@@ -971,7 +971,14 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           clearPartial();
         } else {
           // Only clear thinking partial — preserve streaming text
-          useChatStore.setState({ partialThinking: '' });
+          {
+            const td = useChatStore.getState().getTab(tabId);
+            if (td?.partialThinking) {
+              const nt = new Map(useChatStore.getState().tabs);
+              nt.set(tabId, { ...td, partialThinking: '' });
+              useChatStore.setState({ tabs: nt, sessionCache: nt });
+            }
+          }
         }
 
         // If there's a pending slash command processing card, mark it as
@@ -1151,7 +1158,14 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
             // DON'T override activityStatus here: if text is currently streaming,
             // the phase should remain 'writing'. The streaming events (thinking_delta,
             // text_delta) are the source of truth for activity phase.
-            useChatStore.setState({ partialThinking: '' });
+            {
+            const td = useChatStore.getState().getTab(tabId);
+            if (td?.partialThinking) {
+              const nt = new Map(useChatStore.getState().tabs);
+              nt.set(tabId, { ...td, partialThinking: '' });
+              useChatStore.setState({ tabs: nt, sessionCache: nt });
+            }
+          }
             agentActions.updatePhase(agentId, 'thinking');
             addMessage({
               id: msg.uuid ? `${msg.uuid}_thinking_${blockIdx}` : generateMessageId(),
