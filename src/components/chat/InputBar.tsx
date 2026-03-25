@@ -697,7 +697,7 @@ export function InputBar() {
       if (useSettingsStore.getState().sessionMode === 'plan') {
         setSessionModeLocal('code');
       }
-      useChatStore.getState().updateMessage(pendingPlanReview.id, {
+      useChatStore.getState().updateMessage(tabId, pendingPlanReview.id, {
         resolved: true,
         interactionState: 'resolved',
       });
