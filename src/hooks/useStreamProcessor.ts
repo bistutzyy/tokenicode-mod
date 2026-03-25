@@ -1447,7 +1447,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         // Code mode: Auto-restart when ExitPlanMode caused CLI exit.
         // In stream-json mode, ExitPlanMode is treated as a permission denial,
         // causing the CLI to exit. Silently restart with --resume to continue.
-        if (exitPlanModeSeenRef.current && useSettingsStore.getState().sessionMode === 'code'
+        if (exitPlanModeSeenRef.current && getEffectiveMode(useChatStore.getState().getTab(tabId)?.sessionMeta) === 'code'
             && msg.subtype !== 'success') {
           exitPlanModeSeenRef.current = false;
           console.log('[TOKENICODE] Code mode ExitPlanMode exit detected — auto-restarting with --resume');
