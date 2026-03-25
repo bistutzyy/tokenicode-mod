@@ -979,7 +979,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         // Some commands (e.g. /compact) may not emit a 'result' event.
         const pendingCmd = useChatStore.getState().getTab(tabId)?.sessionMeta.pendingCommandMsgId;
         if (pendingCmd) {
-          useChatStore.getState().updateMessage(pendingCmd, {
+          useChatStore.getState().updateMessage(tabId, pendingCmd, {
             commandCompleted: true,
             commandData: {
               ...(useChatStore.getState().getTab(tabId)?.messages ?? []).find((m) => m.id === pendingCmd)?.commandData,
