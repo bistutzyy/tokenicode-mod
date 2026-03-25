@@ -986,7 +986,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
               completedAt: Date.now(),
             },
           });
-          useChatStore.getState().setSessionMeta({ pendingCommandMsgId: undefined });
+          useChatStore.getState().setSessionMeta(tabId, { pendingCommandMsgId: undefined });
         }
 
         // If this message contains AskUserQuestion, skip text blocks —
@@ -1468,7 +1468,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
               completedAt: Date.now(),
             },
           });
-          useChatStore.getState().setSessionMeta({ pendingCommandMsgId: undefined });
+          useChatStore.getState().setSessionMeta(tabId, { pendingCommandMsgId: undefined });
         }
 
         // Extract result text for display (e.g., slash command output)
@@ -1627,7 +1627,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
                   completedAt: Date.now(),
                 },
               });
-              useChatStore.getState().setSessionMeta({ pendingCommandMsgId: undefined });
+              useChatStore.getState().setSessionMeta(tabId, { pendingCommandMsgId: undefined });
               if (useChatStore.getState().getTab(tabId)?.sessionStatus === 'running') {
                 useChatStore.getState().setSessionStatus('idle');
               }
@@ -1699,7 +1699,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         const exitPendingCmd = useChatStore.getState().getTab(tabId)?.sessionMeta.pendingCommandMsgId;
         if (exitPendingCmd) {
           useChatStore.getState().updateMessage(exitPendingCmd, { commandCompleted: true });
-          useChatStore.getState().setSessionMeta({ pendingCommandMsgId: undefined });
+          useChatStore.getState().setSessionMeta(tabId, { pendingCommandMsgId: undefined });
         }
 
         // If the session was running and no assistant messages were received,
