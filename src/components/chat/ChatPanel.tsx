@@ -295,13 +295,13 @@ function ActivityIndicator({ activityStatus, sessionMeta }: {
 
 export function ChatPanel() {
   const t = useT();
-  const messages = useChatStore((s) => s.messages);
-  const isStreaming = useChatStore((s) => s.isStreaming);
-  const partialText = useChatStore((s) => s.partialText);
-  const partialThinking = useChatStore((s) => s.partialThinking);
-  const sessionStatus = useChatStore((s) => s.sessionStatus);
-  const sessionMeta = useChatStore((s) => s.sessionMeta);
-  const activityStatus = useChatStore((s) => s.activityStatus);
+  const messages = useActiveTab((t) => t.messages);
+  const isStreaming = useActiveTab((t) => t.isStreaming);
+  const partialText = useActiveTab((t) => t.partialText);
+  const partialThinking = useActiveTab((t) => t.partialThinking);
+  const sessionStatus = useActiveTab((t) => t.sessionStatus);
+  const sessionMeta = useActiveTab((t) => t.sessionMeta);
+  const activityStatus = useActiveTab((t) => t.activityStatus);
   const sidebarOpen = useSettingsStore((s) => s.sidebarOpen);
   const toggleSidebar = useSettingsStore((s) => s.toggleSidebar);
   const toggleSecondaryPanel = useSettingsStore((s) => s.toggleSecondaryPanel);
