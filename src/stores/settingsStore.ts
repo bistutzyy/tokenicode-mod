@@ -353,7 +353,7 @@ useSettingsStore.subscribe((state, prevState) => {
   Promise.all([
     import('../lib/tauri-bridge'),
     import('./chatStore'),
-  ]).then(([{ bridge }, { useChatStore, getActiveTabState }]) => {
+  ]).then(([{ bridge }, { getActiveTabState }]) => {
     const stdinId = getActiveTabState().sessionMeta.stdinId;
     if (!stdinId) return; // No active session
 
