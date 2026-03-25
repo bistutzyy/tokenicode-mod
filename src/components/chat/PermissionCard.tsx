@@ -77,7 +77,10 @@ export function PermissionCard({ message }: Props) {
   const handleRetry = useCallback(() => {
     setRetrying(true);
     // Reset to pending state, then let user choose again
-    useChatStore.getState().setInteractionState(message.id, 'pending');
+    const retryTabId = useSessionStore.getState().selectedSessionId;
+    if (retryTabId) {
+      useChatStore.getState().setInteractionState(retryTabId, message.id, 'pending');
+    }
     setRetrying(false);
   }, [message.id]);
 
