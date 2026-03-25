@@ -425,6 +425,7 @@ export function InputBar() {
   const executeImmediateCommand = useCallback(async (cmdName: string, args?: string) => {
     const cmd = cmdName.toLowerCase().replace(/^\//, '');
     const { addMessage } = useChatStore.getState();
+    const tabId = useSessionStore.getState().selectedSessionId;
 
     // Always clear the input box first
     setInputSync('');
@@ -441,7 +442,8 @@ export function InputBar() {
       content: string,
       commandData?: Record<string, any>,
     ) => {
-      addMessage({
+      if (!tabId) return;
+      addMessage(tabId, {
         id: generateMessageId(),
         role: 'system',
         type: 'text',
