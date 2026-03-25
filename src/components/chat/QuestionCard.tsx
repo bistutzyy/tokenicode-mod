@@ -130,7 +130,6 @@ export function QuestionCard({ message, floating }: Props) {
           await bridge.sendStdin(stdinId, JSON.stringify({ answers }));
         }
         setInteractionState(qTabId, message.id, 'resolved');
-        useChatStore.getState().updatePartialMessage(qTabId, '');
         setSessionStatus(qTabId, 'running');
         setActivityStatus(qTabId, { phase: 'thinking' });
       } catch (err) {
