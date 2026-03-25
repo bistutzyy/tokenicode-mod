@@ -37,7 +37,9 @@ export function CommandPalette() {
           useChatStore.getState().saveToCache(currentTabId);
           useAgentStore.getState().saveToCache(currentTabId);
         }
-        useChatStore.getState().resetSession();
+        // In v2, navigating away doesn't reset the previous tab
+        useSessionStore.getState().setSelectedSession(null);
+        useSettingsStore.getState().setWorkingDirectory('');
       },
     },
     {
