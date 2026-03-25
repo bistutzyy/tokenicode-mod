@@ -623,9 +623,26 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         };
       });
       return result ?? {};
-    }),
+    });
+  },
 
-  setInteractionState: (tabId, msgId, interactionState, error) =>
+  setInteractionState: (tabIdOrMsgId: any, msgIdOrState: any, stateOrError?: any, maybeError?: any) => {
+    // Backward compat: setInteractionState(msgId, state, error?) → setInteractionState(activeTabId, msgId, state, error?)
+    const isV1 = typeof stateOrError === 'string' || stateOrError === undefined;
+    let tabId: string, msgId: string, interactionState: InteractionState, error: string | undefined;
+    if (isV1 && typeof msgIdOrState !== 'string') {
+      // This is the old v1 pattern: setInteractionState(msgId, state, error?)
+      tabId = useSessionStore.getState().selectedSessionId ?? '';
+      msgId = tabIdOrMsgId;
+      interactionState = msgIdOrState;
+      error = stateOrError;
+    } else {
+      tabId = tabIdOrMsgId;
+      msgId = msgIdOrState;
+      interactionState = stateOrError;
+      error = maybeError;
+    }
+    if (!tabId) return;
     set((state) => {
       const result = updateTab(state.tabs, tabId, (tab) => ({
         ...tab,
@@ -639,9 +656,12 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         ),
       }));
       return result ?? {};
-    }),
+    });
+  },
 
-  getActiveInteraction: (tabId) => {
+  getActiveInteraction: (tabIdOrUndef?: any) => {
+    const tabId = (typeof tabIdOrUndef === 'string' ? tabIdOrUndef : null)
+      || useSessionStore.getState().selectedSessionId || '';
     const tab = get().tabs.get(tabId);
     if (!tab) return undefined;
     // Return the last message with an active (pending) interaction
