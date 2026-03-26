@@ -6,6 +6,15 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **macOS FD limit 崩溃** — GUI 进程继承 launchd 的 256 FD limit 导致 CLI 无法启动，启动时 setrlimit 抬高至 min(hard_limit, 65536)（#54）
+- **Markdown 渲染崩溃白屏** — 截断的大表格等畸形内容触发 `InvalidCharacterError` 导致整个 app 崩溃，新增 MarkdownErrorBoundary 隔离单条消息的渲染错误
+
+---
+
 ## [0.8.22] - 2026-03-21
 
 ### Fixed
