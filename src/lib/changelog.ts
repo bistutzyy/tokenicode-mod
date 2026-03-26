@@ -19,6 +19,29 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.1',
+    date: '2026-03-26',
+    highlights: {
+      zh: ['稳定性修复 — FD limit 崩溃 + Markdown 渲染崩溃'],
+      en: ['Stability fixes — FD limit crash + Markdown rendering crash'],
+    },
+    categories: [
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            'macOS FD limit 崩溃 — 启动时 setrlimit 抬高至 65536',
+            'Markdown 渲染崩溃白屏 — MarkdownErrorBoundary 隔离单条消息错误',
+          ],
+          en: [
+            'macOS FD limit crash — raise to 65536 at startup',
+            'Markdown rendering crash — MarkdownErrorBoundary isolates per-message errors',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-03-25',
     highlights: {
