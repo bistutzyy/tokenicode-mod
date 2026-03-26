@@ -6627,6 +6627,22 @@ pub fn run() {
         .manage(WatcherManager::default())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            // Raise file descriptor limit for macOS GUI processes.
+            // launchd gives GUI apps a soft limit of 256, which is too low
+            // for Claude CLI. Raise it to min(hard_limit, 65536).
+            #[cfg(unix)]
+            {
+                use libc::{getrlimit, setrlimit, rlimit, RLIMIT_NOFILE};
+                let mut rlim = rlimit { rlim_cur: 0, rlim_max: 0 };
+                if unsafe { getrlimit(RLIMIT_NOFILE, &mut rlim) } == 0 {
+                    let target = rlim.rlim_max.min(65536);
+                    if rlim.rlim_cur < target {
+                        rlim.rlim_cur = target;
+                        unsafe { setrlimit(RLIMIT_NOFILE, &rlim); }
+                    }
+                }
+            }
+
             // titleBarStyle: "Overlay" in tauri.conf.json handles macOS traffic lights
             // and native titlebar drag/double-click-to-maximize automatically.
 

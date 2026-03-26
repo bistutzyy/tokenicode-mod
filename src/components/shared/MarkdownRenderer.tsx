@@ -1,4 +1,4 @@
-import { memo, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
+import React, { memo, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeHighlight from 'rehype-highlight';
@@ -252,6 +252,35 @@ async function loadRemarkPlugins(): Promise<RemarkPlugin[]> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const REHYPE_PLUGINS: any[] = [rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeHighlight];
 
+/** Error boundary scoped to a single markdown block.
+ *  A malformed message (e.g. truncated table from rate-limit) crashes only
+ *  its own bubble, not the entire app. */
+class MarkdownErrorBoundary extends React.Component<
+  { children: ReactNode; fallback: string },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; fallback: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.warn('[MarkdownRenderer] render failed, falling back to plain text:', error.message);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <pre className="whitespace-pre-wrap break-words text-xs text-text-secondary">
+          {this.props.fallback}
+        </pre>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export const MarkdownRenderer = memo(function MarkdownRenderer({ content, className, basePath }: Props) {
   const t = useT();
   const workingDirectory = useSettingsStore((s) => s.workingDirectory);
@@ -426,13 +455,15 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, classN
       prose-pre:border prose-pre:border-border-subtle
       prose-headings:text-text-primary prose-a:text-accent
       prose-strong:text-text-primary ${className || ''}`}>
-      <Markdown
-        remarkPlugins={remarkPlugins}
-        rehypePlugins={REHYPE_PLUGINS}
-        components={components}
-      >
-        {processedContent}
-      </Markdown>
+      <MarkdownErrorBoundary fallback={content}>
+        <Markdown
+          remarkPlugins={remarkPlugins}
+          rehypePlugins={REHYPE_PLUGINS}
+          components={components}
+        >
+          {processedContent}
+        </Markdown>
+      </MarkdownErrorBoundary>
     </div>
   );
 });

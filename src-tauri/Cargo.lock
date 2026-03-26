@@ -4897,6 +4897,7 @@ dependencies = [
  "dirs",
  "flate2",
  "futures-util",
+ "libc",
  "notify",
  "objc",
  "rand 0.8.5",
