@@ -22,43 +22,20 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '0.9.1',
     date: '2026-03-26',
     highlights: {
-      zh: ['稳定性修复 — FD limit 崩溃 + Markdown 渲染崩溃'],
-      en: ['Stability fixes — FD limit crash + Markdown rendering crash'],
-    },
-    categories: [
-      {
-        label: { zh: '修复', en: 'Fixed' },
-        items: {
-          zh: [
-            'macOS FD limit 崩溃 — 启动时 setrlimit 抬高至 65536',
-            'Markdown 渲染崩溃白屏 — MarkdownErrorBoundary 隔离单条消息错误',
-          ],
-          en: [
-            'macOS FD limit crash — raise to 65536 at startup',
-            'Markdown rendering crash — MarkdownErrorBoundary isolates per-message errors',
-          ],
-        },
-      },
-    ],
-  },
-  {
-    version: '0.9.0',
-    date: '2026-03-25',
-    highlights: {
-      zh: ['多任务完全隔离 — chatStore v2 架构重写'],
-      en: ['Full multi-task isolation — chatStore v2 architecture rewrite'],
+      zh: ['多任务完全隔离 + 37 个 Issue 修复'],
+      en: ['Full multi-task isolation + 37 issue fixes'],
     },
     categories: [
       {
         label: { zh: '架构', en: 'Architecture' },
         items: {
           zh: [
-            '多任务完全隔离 — 每个 tab 拥有独立的消息、streaming 状态、session meta，不再共享顶层字段',
-            'chatStore v2 — 所有数据存储在 tabs Map 中，结构上不可能串台',
+            '多任务完全隔离 — 每个 tab 独立消息、streaming 状态、session meta',
+            'chatStore v2 — 数据只在 tabs Map 中，结构上不可能串台',
           ],
           en: [
             'Full multi-task isolation — each tab owns independent messages, streaming state, session meta',
-            'chatStore v2 — all data stored in tabs Map, cross-tab contamination structurally impossible',
+            'chatStore v2 — all data in tabs Map, cross-tab contamination structurally impossible',
           ],
         },
       },
@@ -66,6 +43,8 @@ export const CHANGELOG: ChangelogEntry[] = [
         label: { zh: '修复', en: 'Fixed' },
         items: {
           zh: [
+            'macOS FD limit 崩溃 — 启动时抬高至 65536',
+            'Markdown 渲染崩溃白屏 — MarkdownErrorBoundary 隔离',
             '切换模型后 SESSION_ALREADY_ACTIVE 报错',
             '后台 Agent Team 切换会话后静默终止',
             '消息串台到其他对话窗口',
@@ -76,9 +55,10 @@ export const CHANGELOG: ChangelogEntry[] = [
             'npm 安装的 CLI 检测不到',
             'MCP 配置双层嵌套报错',
             'Agent Team 副代理不显示',
-            '双击 ESC 触发已禁用的回退功能',
           ],
           en: [
+            'macOS FD limit crash — raise to 65536 at startup',
+            'Markdown rendering crash — MarkdownErrorBoundary isolation',
             'SESSION_ALREADY_ACTIVE after model switch',
             'Background Agent Team silently terminated on tab switch',
             'Messages leaking to other chat windows',
@@ -89,7 +69,6 @@ export const CHANGELOG: ChangelogEntry[] = [
             'npm-installed CLI not detected',
             'MCP double-nested config error',
             'Agent Team sub-agents not displayed',
-            'Double-Esc triggering disabled rewind',
           ],
         },
       },
