@@ -509,6 +509,7 @@ function ToolIcon({ name }: { name: string }) {
         </svg>
       );
     case 'Task':
+    case 'Agent':
       return (
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
           stroke="currentColor" strokeWidth="1.2" className="text-text-tertiary flex-shrink-0">
@@ -543,7 +544,7 @@ function getToolLabel(name: string, t: (key: string) => string): string {
     case 'Write': return t('msg.writeFile');
     case 'Edit': return t('msg.editFile');
     case 'Glob': case 'Grep': return t('msg.search');
-    case 'Task': return t('msg.subAgent');
+    case 'Task': case 'Agent': return t('msg.subAgent');
     case 'TodoWrite': return t('msg.todo');
     case 'WebFetch': case 'WebSearch': return t('msg.webFetch');
     case 'ExitPlanMode': case 'EnterPlanMode': return t('msg.planLabel');
@@ -614,10 +615,34 @@ export const ToolUseMsg = memo(function ToolUseMsg({ message }: Props) {
       );
     }
 
-    if (toolName === 'Task' && input?.description) {
+    if ((toolName === 'Task' || toolName === 'Agent') && input?.description) {
       return (
         <span className="text-[11px] text-text-tertiary truncate max-w-[300px] italic">
           {input.description}
+        </span>
+      );
+    }
+
+    if (toolName === 'TeamCreate' && (input?.team_name || input?.name)) {
+      return (
+        <span className="text-[11px] text-text-tertiary truncate max-w-[300px] italic">
+          Team: {input.team_name || input.name}
+        </span>
+      );
+    }
+
+    if (toolName === 'TaskCreate' && (input?.subject || input?.description)) {
+      return (
+        <span className="text-[11px] text-text-tertiary truncate max-w-[300px] italic">
+          {input.subject || input.description}
+        </span>
+      );
+    }
+
+    if (toolName === 'SendMessage' && input?.recipient) {
+      return (
+        <span className="text-[11px] text-text-tertiary truncate max-w-[300px] italic">
+          &rarr; {input.recipient}
         </span>
       );
     }

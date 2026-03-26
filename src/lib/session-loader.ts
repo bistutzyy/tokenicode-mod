@@ -132,8 +132,8 @@ export function parseSessionMessages(rawMessages: any[]): LoadedSession {
               timestamp: msg.timestamp || Date.now(),
             });
           } else if (block.type === 'tool_use') {
-            // Rebuild agent tree from Task tool_use blocks
-            if (block.name === 'Task') {
+            // Rebuild agent tree from Agent/Task tool_use blocks
+            if (block.name === 'Task' || block.name === 'Agent') {
               agents.push({
                 id: block.id || generateMessageId(),
                 parentId: 'main',

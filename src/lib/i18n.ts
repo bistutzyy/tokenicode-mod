@@ -166,6 +166,17 @@ const messages: Record<Locale, Record<string, string>> = {
     // Error classification
     'error.technicalSummary': '遇到了一个技术问题，通常重试即可解决。',
     'error.showDetails': '查看详情',
+    'error.invalidKey': '🔑 API 密钥无效或已过期，请检查设置中的 API Key 是否正确。',
+    'error.rateLimit': '⏳ 请求太频繁，请稍等几秒后重试。',
+    'error.quotaExceeded': '💰 API 余额不足，请充值后重试。',
+    'error.modelNotFound': '🤖 模型不存在或不可用，请在设置中切换其他模型。',
+    'error.networkError': '🌐 网络连接失败，请检查网络设置或稍后重试。',
+    'error.permissionDenied': '🚫 操作被拒绝，请检查权限设置。',
+    'error.serviceUnavailable': '🔧 服务暂时繁忙，请稍后重试。',
+    'error.cliNotInstalled': '⚙️ CLI 未正确安装，请在设置中重新安装。',
+    'error.tokenLimit': '📏 对话太长了，请新建一个任务继续。',
+    'error.genericFallback': '出了点问题，请稍后重试。',
+    'error.cliExitedSilently': 'CLI 意外退出且无输出，请检查 CLI 是否已正确安装（设置 → CLI），以及 API 服务商是否已配置。',
 
     // CommandPalette
     'cmd.newChat': '新任务',
@@ -814,6 +825,17 @@ const messages: Record<Locale, Record<string, string>> = {
     // Error classification
     'error.technicalSummary': 'A technical issue occurred. Retrying usually resolves it.',
     'error.showDetails': 'Show details',
+    'error.invalidKey': '🔑 API key is invalid or expired. Please check the API Key in settings.',
+    'error.rateLimit': '⏳ Too many requests. Please wait a few seconds and try again.',
+    'error.quotaExceeded': '💰 API balance is insufficient. Please top up and try again.',
+    'error.modelNotFound': '🤖 Model not found or unavailable. Please switch to another model in settings.',
+    'error.networkError': '🌐 Network connection failed. Please check your network settings or try again later.',
+    'error.permissionDenied': '🚫 Operation was denied. Please check your permissions.',
+    'error.serviceUnavailable': '🔧 Service is temporarily busy. Please try again later.',
+    'error.cliNotInstalled': '⚙️ CLI is not properly installed. Please reinstall in settings.',
+    'error.tokenLimit': '📏 Conversation is too long. Please start a new task to continue.',
+    'error.genericFallback': 'Something went wrong. Please try again later.',
+    'error.cliExitedSilently': 'CLI process exited unexpectedly without output. Please check that Claude CLI is installed correctly (Settings → CLI) and that your API provider is configured.',
 
     // CommandPalette
     'cmd.newChat': 'New Task',

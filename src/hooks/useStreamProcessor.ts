@@ -10,24 +10,27 @@ import { useProviderStore } from '../stores/providerStore';
 import { t } from '../lib/i18n';
 
 // --- Error classification for user-facing messages ---
-// User-actionable errors are shown as-is; technical errors get a friendly summary
-// with raw details in a collapsible block.
-const USER_ACTIONABLE_RE = [
-  /40[13]|unauthorized|invalid.*key|api.key.*invalid/i,
-  /429|rate.limit|too.many.request/i,
-  /quota|insufficient.*balance|credit|billing/i,
-  /overloaded|503|service.unavailable/i,
-  /timeout|timed?.out|ETIMEDOUT|ECONNREFUSED/i,
-  /network|ENOTFOUND|fetch.failed|dns/i,
-  /permission|access.denied|forbidden/i,
-  /not.found|does.not.exist|no.such/i,
-  /token.*limit|context.*length|too.long/i,
+// Each pattern maps to a friendly i18n key. Matched errors show the friendly
+// message as primary text with raw error in a collapsible details block.
+// Unmatched errors get a generic fallback + raw details.
+const ERROR_CATEGORIES: ReadonlyArray<{ pattern: RegExp; i18nKey: string }> = [
+  { pattern: /40[13]|unauthorized|invalid.*key|api.key.*invalid/i, i18nKey: 'error.invalidKey' },
+  { pattern: /429|rate.limit|too.many.request/i, i18nKey: 'error.rateLimit' },
+  { pattern: /quota|insufficient.*balance|credit|billing/i, i18nKey: 'error.quotaExceeded' },
+  { pattern: /model.*not.found|invalid.*model|not_found.*model/i, i18nKey: 'error.modelNotFound' },
+  { pattern: /timeout|timed?.out|ECONNREFUSED|ECONNRESET|ENOTFOUND/i, i18nKey: 'error.networkError' },
+  { pattern: /network|fetch.failed|dns/i, i18nKey: 'error.networkError' },
+  { pattern: /permission.denied|operation.not.permitted|access.denied|forbidden/i, i18nKey: 'error.permissionDenied' },
+  { pattern: /overloaded|capacity|503|service.unavailable/i, i18nKey: 'error.serviceUnavailable' },
+  { pattern: /not.installed|command.not.found/i, i18nKey: 'error.cliNotInstalled' },
+  { pattern: /token.*limit|context.*length|too.long/i, i18nKey: 'error.tokenLimit' },
 ];
 
 export function formatErrorForUser(raw: string): string {
   if (!raw || raw.length < 10) return raw;
-  if (USER_ACTIONABLE_RE.some((p) => p.test(raw))) return raw;
-  return `${t('error.technicalSummary')}\n\n<details>\n<summary>${t('error.showDetails')}</summary>\n\n\`\`\`\n${raw}\n\`\`\`\n\n</details>`;
+  const match = ERROR_CATEGORIES.find((c) => c.pattern.test(raw));
+  const friendly = match ? t(match.i18nKey) : t('error.genericFallback');
+  return `${friendly}\n\n<details>\n<summary>${t('error.showDetails')}</summary>\n\n\`\`\`\n${raw}\n\`\`\`\n\n</details>`;
 }
 
 // --- Streaming text buffer (rAF-throttled, per-stdinId) ---
@@ -907,16 +910,31 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           }
         }
 
-        // Early agent creation: register sub-agent as soon as Task tool_use
+        // Early agent creation: register sub-agent as soon as Agent/Task tool_use
         // starts streaming, so subsequent events resolve to the correct agent.
         if (evt.type === 'content_block_start'
             && evt.content_block?.type === 'tool_use'
-            && evt.content_block?.name === 'Task') {
+            && (evt.content_block?.name === 'Task' || evt.content_block?.name === 'Agent')) {
           agentActions.upsertAgent({
             id: evt.content_block.id || `task_${Date.now()}`,
             parentId: agentId,
             description: '',
             phase: 'spawning',
+            startTime: Date.now(),
+            isMain: false,
+          });
+        }
+        // Agent Team tools (TaskCreate, SendMessage): register as visible agents
+        // so the agent panel shows team activity. These run in separate CLI processes
+        // so we won't get real-time progress, but visibility is the goal.
+        if (evt.type === 'content_block_start'
+            && evt.content_block?.type === 'tool_use'
+            && (evt.content_block?.name === 'TaskCreate' || evt.content_block?.name === 'SendMessage')) {
+          agentActions.upsertAgent({
+            id: evt.content_block.id || `team_${Date.now()}`,
+            parentId: agentId,
+            description: '',
+            phase: 'tool',
             startTime: Date.now(),
             isMain: false,
           });
@@ -1069,12 +1087,24 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
               continue;
             }
             setActivityStatus({ phase: 'tool', toolName: block.name });
-            if (block.name === 'Task') {
+            if (block.name === 'Task' || block.name === 'Agent') {
               agentActions.upsertAgent({
                 id: block.id || generateMessageId(),
                 parentId: agentId,
                 description: block.input?.description || block.input?.prompt || '',
                 phase: 'spawning',
+                startTime: Date.now(),
+                isMain: false,
+              });
+            } else if (block.name === 'TaskCreate' || block.name === 'SendMessage') {
+              // Agent Team tasks/messages: register as visible agents in the tree.
+              // These run in separate CLI processes so we won't get progress events,
+              // but showing them makes the team activity visible in the agent panel.
+              agentActions.upsertAgent({
+                id: block.id || `team_${Date.now()}`,
+                parentId: agentId,
+                description: block.input?.subject || block.input?.description || block.input?.recipient || '',
+                phase: 'tool',
                 startTime: Date.now(),
                 isMain: false,
               });
@@ -1327,6 +1357,10 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
             useChatStore.getState().updateMessage(tabId, toolUseId, updates);
             break;
           }
+        }
+        // Complete Agent Team agents when their tool result arrives
+        if (toolUseId && agentActions.agents.has(toolUseId)) {
+          agentActions.completeAgent(toolUseId, 'completed');
         }
         addMessage({
           id: msg.uuid || generateMessageId(),
@@ -1792,9 +1826,7 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
                 id: generateMessageId(),
                 role: 'system',
                 type: 'text',
-                content: 'CLI process exited unexpectedly without producing output. '
-                  + 'Please check that Claude CLI is installed correctly (Settings → CLI) '
-                  + 'and that your API provider is configured.',
+                content: t('error.cliExitedSilently'),
                 timestamp: Date.now(),
               });
             }

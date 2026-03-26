@@ -484,7 +484,7 @@ export function ChatPanel() {
                   ? 'bg-success'
                   : 'bg-text-tertiary/30'}`} />
             <span className={`${activeAgentCount > 0 ? 'text-amber-400' : totalAgentCount > 0 ? 'text-success' : 'text-text-tertiary'}`}>
-              Agent
+              Agent{totalAgentCount > 1 ? ` (${totalAgentCount})` : ''}
             </span>
           </button>
 
