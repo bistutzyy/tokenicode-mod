@@ -6,6 +6,18 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.9.2] - 2026-03-28
+
+### Fixed
+
+- **流式输出卡住** — stream buffer 的 rAF flush 在 stdinId→tabId 映射丢失时 fallback 到 selectedSessionId 并自动修复映射，防止流式文本被静默丢弃——后端已完成生成但前端未渲染（#57）
+
+### Changed
+
+- **字体大小上限** — 从 24px 提升到 36px
+
+---
+
 ## [0.9.1] - 2026-03-26
 
 ### Fixed

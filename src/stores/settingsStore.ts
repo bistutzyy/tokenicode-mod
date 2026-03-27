@@ -192,10 +192,10 @@ export const useSettingsStore = create<SettingsState>()(
         set((state) => ({ locale: state.locale === 'zh' ? 'en' : 'zh' })),
 
       setFontSize: (size) =>
-        set(() => ({ fontSize: Math.max(10, Math.min(24, size)) })),
+        set(() => ({ fontSize: Math.max(10, Math.min(36, size)) })),
 
       increaseFontSize: () =>
-        set((state) => ({ fontSize: Math.min(24, state.fontSize + 1) })),
+        set((state) => ({ fontSize: Math.min(36, state.fontSize + 1) })),
 
       decreaseFontSize: () =>
         set((state) => ({ fontSize: Math.max(10, state.fontSize - 1) })),

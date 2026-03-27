@@ -62,7 +62,13 @@ function _scheduleStreamFlush(stdinId: string) {
     buf.raf = 0;
 
     // Resolve ownerTab from stdinId mapping — all updates go to this tab.
-    const tabId = useSessionStore.getState().getTabForStdin(stdinId);
+    // Fallback to selectedSessionId if mapping is missing (prevents silent text loss #57)
+    const mappedId = useSessionStore.getState().getTabForStdin(stdinId);
+    const tabId = mappedId || useSessionStore.getState().selectedSessionId || undefined;
+    if (!mappedId && tabId) {
+      console.warn('[stream-flush] stdinId mapping missing, fallback to selectedSessionId:', stdinId, '→', tabId);
+      useSessionStore.getState().registerStdinTab(stdinId, tabId);
+    }
     if (!tabId) {
       buf.text = '';
       buf.thinking = '';
@@ -97,7 +103,11 @@ export function flushStreamBuffer(stdinId?: string) {
     }
     if (!buf.text && !buf.thinking) continue;
 
-    const tabId = useSessionStore.getState().getTabForStdin(id);
+    const mappedFlush = useSessionStore.getState().getTabForStdin(id);
+    const tabId = mappedFlush || useSessionStore.getState().selectedSessionId || undefined;
+    if (!mappedFlush && tabId) {
+      useSessionStore.getState().registerStdinTab(id, tabId);
+    }
     if (!tabId) {
       buf.text = '';
       buf.thinking = '';
