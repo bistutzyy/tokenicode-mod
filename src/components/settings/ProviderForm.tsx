@@ -54,6 +54,7 @@ export function ProviderForm({ provider, onClose, onDelete, autoTest, onTestStat
   const [apiFormat, setApiFormat] = useState(provider.apiFormat);
   const [apiKey, setApiKey] = useState(provider.apiKey || '');
   const [showKey, setShowKey] = useState(false);
+  const [proxyUrl, setProxyUrl] = useState(provider.proxyUrl || '');
   const [mappings, setMappings] = useState<ModelMapping[]>(provider.modelMappings);
   const [extraEnv, setExtraEnv] = useState<Record<string, string>>(provider.extra_env || {});
   const [testStatus, _setTestStatus] = useState<TestStatus>('idle');
@@ -86,6 +87,7 @@ export function ProviderForm({ provider, onClose, onDelete, autoTest, onTestStat
   const handleNameChange = (v: string) => { setName(v); autoSave({ name: v }); };
   const handleBaseUrlChange = (v: string) => { setBaseUrl(v); autoSave({ baseUrl: v }); };
   const handleApiKeyChange = (v: string) => { setApiKey(v); autoSave({ apiKey: v || undefined }); };
+  const handleProxyUrlChange = (v: string) => { setProxyUrl(v); autoSave({ proxyUrl: v || undefined }); };
   // API format selector hidden from UI — kept for backward compat
   const _handleApiFormatChange = (v: 'anthropic' | 'openai') => { setApiFormat(v); autoSave({ apiFormat: v }); }; void _handleApiFormatChange;
 
@@ -163,7 +165,7 @@ export function ProviderForm({ provider, onClose, onDelete, autoTest, onTestStat
         return;
       }
       const start = Date.now();
-      const result = await bridge.testProviderConnection(baseUrl, apiFormat, apiKey, testModel);
+      const result = await bridge.testProviderConnection(baseUrl, apiFormat, apiKey, testModel, proxyUrl || undefined);
       const elapsed = Date.now() - start;
       setTestResult(result);
       setTestTimeMs(elapsed);
@@ -328,6 +330,15 @@ export function ProviderForm({ provider, onClose, onDelete, autoTest, onTestStat
             {showKey ? <EyeClosedIcon /> : <EyeOpenIcon />}
           </button>
         </div>
+      </div>
+
+      {/* Proxy URL */}
+      <div>
+        <label className="text-xs text-text-muted mb-1 block">{t('provider.proxyUrl')}</label>
+        <input className={INPUT_CLASS} value={proxyUrl}
+          onChange={(e) => handleProxyUrlChange(e.target.value)}
+          placeholder={t('provider.proxyUrlPlaceholder')} />
+        <p className="text-xs text-text-tertiary mt-1">{t('provider.proxyUrlHint')}</p>
       </div>
 
       {/* Model Mappings */}

@@ -15,6 +15,7 @@ export interface ApiProvider {
   apiKey?: string;
   modelMappings: ModelMapping[];
   extra_env?: Record<string, string>;
+  proxyUrl?: string;
   preset?: string;
   createdAt: number;
   updatedAt: number;

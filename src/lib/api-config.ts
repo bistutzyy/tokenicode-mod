@@ -37,6 +37,7 @@ export function exportProvider(provider: ApiProvider): string {
       ...(provider.extra_env && Object.keys(provider.extra_env).length > 0
         ? { extra_env: provider.extra_env }
         : {}),
+      ...(provider.proxyUrl ? { proxyUrl: provider.proxyUrl } : {}),
     },
   };
   return JSON.stringify(config, null, 2);
@@ -134,6 +135,9 @@ export function parseAndValidate(
     extra_env = p.extra_env as Record<string, string>;
   }
 
+  // proxyUrl (v2 only)
+  const proxyUrl = typeof p.proxyUrl === 'string' ? p.proxyUrl.trim() : undefined;
+
   return {
     ok: true,
     provider: {
@@ -143,6 +147,7 @@ export function parseAndValidate(
       ...(apiKey ? { apiKey } : {}),
       modelMappings: mappings,
       ...(extra_env ? { extra_env } : {}),
+      ...(proxyUrl ? { proxyUrl } : {}),
     },
   };
 }

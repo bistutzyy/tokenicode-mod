@@ -370,8 +370,8 @@ export const bridge = {
   saveProviders: (data: ProvidersFile) =>
     invoke<void>('save_providers', { data }),
 
-  testProviderConnection: (baseUrl: string, apiFormat: string, apiKey: string, model: string) =>
-    invoke<ConnectionTestResult>('test_provider_connection', { baseUrl, apiFormat, apiKey, model }),
+  testProviderConnection: (baseUrl: string, apiFormat: string, apiKey: string, model: string, proxyUrl?: string) =>
+    invoke<ConnectionTestResult>('test_provider_connection', { baseUrl, apiFormat, apiKey, model, proxyUrl: proxyUrl || null }),
 
 
   // --- SDK Control Protocol ---

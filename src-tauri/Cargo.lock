@@ -4756,13 +4756,14 @@ dependencies = [
 
 [[package]]
 name = "tokenicode"
-version = "0.8.8"
+version = "0.9.2"
 dependencies = [
  "base64 0.22.1",
  "cocoa",
  "dirs",
  "flate2",
  "futures-util",
+ "libc",
  "notify",
  "objc",
  "rand 0.8.5",
@@ -4770,6 +4771,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha2",
  "tar",
  "tauri",
  "tauri-build",

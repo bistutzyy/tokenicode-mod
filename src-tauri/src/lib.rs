@@ -638,7 +638,91 @@ fn login_shell_proxy_env() -> &'static HashMap<String, String> {
     })
 }
 
-/// Resolve the best proxy URL from environment variables and login shell.
+/// Read macOS system proxy settings from `scutil --proxy`.
+/// Returns a proxy URL if HTTP/HTTPS/SOCKS proxy is enabled in System Settings.
+#[cfg(target_os = "macos")]
+fn system_proxy_url() -> Option<String> {
+    static CACHE: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    CACHE
+        .get_or_init(|| {
+            let output = std::process::Command::new("scutil")
+                .arg("--proxy")
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::null())
+                .output()
+                .ok()?;
+            if !output.status.success() {
+                return None;
+            }
+            let text = String::from_utf8_lossy(&output.stdout);
+            let get_val = |key: &str| -> Option<String> {
+                text.lines()
+                    .find(|l| l.trim().starts_with(&format!("{} :", key)))
+                    .and_then(|l| l.split(':').nth(1))
+                    .map(|v| v.trim().to_string())
+                    .filter(|v| !v.is_empty())
+            };
+            let is_enabled = |key: &str| get_val(key).map_or(false, |v| v == "1");
+
+            // Prefer HTTPS > SOCKS > HTTP
+            if is_enabled("HTTPSEnable") {
+                if let (Some(host), Some(port)) = (get_val("HTTPSProxy"), get_val("HTTPSPort")) {
+                    let url = format!("http://{}:{}", host, port);
+                    eprintln!("system proxy detected (HTTPS): {}", url);
+                    return Some(url);
+                }
+            }
+            if is_enabled("SOCKSEnable") {
+                if let (Some(host), Some(port)) = (get_val("SOCKSProxy"), get_val("SOCKSPort")) {
+                    let url = format!("socks5://{}:{}", host, port);
+                    eprintln!("system proxy detected (SOCKS): {}", url);
+                    return Some(url);
+                }
+            }
+            if is_enabled("HTTPEnable") {
+                if let (Some(host), Some(port)) = (get_val("HTTPProxy"), get_val("HTTPPort")) {
+                    let url = format!("http://{}:{}", host, port);
+                    eprintln!("system proxy detected (HTTP): {}", url);
+                    return Some(url);
+                }
+            }
+            None
+        })
+        .clone()
+}
+
+/// Probe common local proxy ports and return the first reachable one.
+/// Cached for the process lifetime. Covers Clash (7890), Surge (6152), SOCKS (1080).
+fn probe_local_proxy() -> Option<String> {
+    static CACHE: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    CACHE
+        .get_or_init(|| {
+            let ports: &[(u16, &str)] = &[
+                (7890, "http"),   // Clash default
+                (7897, "http"),   // Clash Verge default
+                (6152, "http"),   // Surge HTTP
+                (1080, "socks5"), // Common SOCKS
+            ];
+            for &(port, scheme) in ports {
+                let addr: std::net::SocketAddr = ([127, 0, 0, 1], port).into();
+                if std::net::TcpStream::connect_timeout(
+                    &addr,
+                    std::time::Duration::from_millis(100),
+                )
+                .is_ok()
+                {
+                    let url = format!("{}://127.0.0.1:{}", scheme, port);
+                    eprintln!("auto-detected local proxy: {}", url);
+                    return Some(url);
+                }
+            }
+            None
+        })
+        .clone()
+}
+
+/// Resolve the best proxy URL from environment variables, system proxy, and login shell.
 /// Returns Some(url) if a proxy is configured, None otherwise.
 fn resolve_proxy_url() -> Option<String> {
     // 1. Check current process env vars (set by VPN/Clash when running)
@@ -654,7 +738,14 @@ fn resolve_proxy_url() -> Option<String> {
             return Some(url);
         }
     }
-    // 2. macOS/Linux GUI apps don't inherit shell env; check login shell
+    // 2. macOS system proxy (System Settings > Network > Proxy)
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(url) = system_proxy_url() {
+            return Some(url);
+        }
+    }
+    // 3. macOS/Linux GUI apps don't inherit shell env; check login shell
     #[cfg(not(target_os = "windows"))]
     {
         let proxy_env = login_shell_proxy_env();
@@ -1026,6 +1117,7 @@ struct ApiProvider {
     api_key: Option<String>,
     model_mappings: Vec<ModelMapping>,
     extra_env: Option<HashMap<String, String>>,
+    proxy_url: Option<String>,
     preset: Option<String>,
     created_at: u64,
     updated_at: u64,
@@ -1095,12 +1187,51 @@ async fn test_provider_connection(
     api_format: String,
     api_key: String,
     model: String,
+    proxy_url: Option<String>,
 ) -> Result<ConnectionTestResult, String> {
-    let client = build_smart_http_client(
-        std::time::Duration::from_secs(10),
-        std::time::Duration::from_secs(30),
-    )
-    .await;
+    // If provider has a proxy configured, build a client that uses it.
+    // Otherwise fall back to the smart proxy detection.
+    let client = if let Some(ref purl) = proxy_url {
+        if !purl.is_empty() {
+            if let Ok(proxy) = reqwest::Proxy::all(purl) {
+                if is_proxy_reachable(purl).await {
+                    eprintln!("test_provider_connection: using provider proxy {}", purl);
+                    reqwest::Client::builder()
+                        .connect_timeout(std::time::Duration::from_secs(10))
+                        .timeout(std::time::Duration::from_secs(30))
+                        .no_proxy()
+                        .proxy(proxy)
+                        .build()
+                        .unwrap_or_default()
+                } else {
+                    eprintln!("test_provider_connection: provider proxy {} unreachable, direct", purl);
+                    build_smart_http_client(
+                        std::time::Duration::from_secs(10),
+                        std::time::Duration::from_secs(30),
+                    )
+                    .await
+                }
+            } else {
+                build_smart_http_client(
+                    std::time::Duration::from_secs(10),
+                    std::time::Duration::from_secs(30),
+                )
+                .await
+            }
+        } else {
+            build_smart_http_client(
+                std::time::Duration::from_secs(10),
+                std::time::Duration::from_secs(30),
+            )
+            .await
+        }
+    } else {
+        build_smart_http_client(
+            std::time::Duration::from_secs(10),
+            std::time::Duration::from_secs(30),
+        )
+        .await
+    };
 
     let base = base_url.trim_end_matches('/');
     let skipped = StepResult {
@@ -1323,6 +1454,20 @@ fn resolve_provider_env(
         }
     }
 
+    // Inject provider-level proxy URL into CLI subprocess env.
+    // This takes highest priority — if set, it overrides all other proxy sources.
+    if let Some(ref proxy_url) = provider.proxy_url {
+        if !proxy_url.is_empty() {
+            for key in &["https_proxy", "http_proxy", "HTTPS_PROXY", "HTTP_PROXY"] {
+                env.insert(key.to_string(), proxy_url.clone());
+            }
+            if proxy_url.starts_with("socks") {
+                env.insert("all_proxy".to_string(), proxy_url.clone());
+                env.insert("ALL_PROXY".to_string(), proxy_url.clone());
+            }
+        }
+    }
+
     // No extra CLI args needed — env vars set on the process take precedence.
     // Previously we used --setting-sources project,local to skip user settings,
     // but that broke directories without .claude/ (e.g. empty/new folders) because
@@ -1477,7 +1622,7 @@ async fn start_claude_session(
         }
     }
 
-    // Inject proxy env vars from login shell if not already in the process environment.
+    // Fallback: inject proxy env vars from login shell / system proxy if not already set.
     // GUI apps launched from Finder/Dock don't inherit shell proxy settings, causing
     // API calls to fail in regions that require a proxy (e.g. China → Anthropic API).
     #[cfg(not(target_os = "windows"))]
