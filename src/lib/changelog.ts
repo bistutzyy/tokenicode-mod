@@ -19,6 +19,29 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.3',
+    date: '2026-03-29',
+    highlights: {
+      zh: ['第三方渠道代理支持 — OpenRouter 等有地区限制的渠道现在能自动走代理'],
+      en: ['Provider proxy support — auto-detect and route through proxy for region-restricted providers like OpenRouter'],
+    },
+    categories: [
+      {
+        label: { zh: '新功能', en: 'Added' },
+        items: {
+          zh: [
+            'Provider 代理设置 — 在渠道配置中可设置代理地址，解决 OpenRouter 等地区限制问题',
+            '自动代理检测 — 自动识别系统代理、Clash/Surge 等常见代理端口，无需手动配置',
+          ],
+          en: [
+            'Provider proxy setting — configure proxy URL per provider to bypass region restrictions (e.g. OpenRouter)',
+            'Auto proxy detection — automatically detects system proxy, Clash/Surge and common proxy ports',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.9.2',
     date: '2026-03-28',
     highlights: {
