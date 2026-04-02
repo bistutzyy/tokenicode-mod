@@ -2340,7 +2340,8 @@ async fn track_session(session_id: String) -> Result<(), String> {
     Ok(())
 }
 
-/// One-time cleanup: remove desk_* entries and duplicates from tracked_sessions.txt
+/// One-time cleanup: remove desk_* entries and duplicates from tracked_sessions.txt.
+/// Uses atomic write (write to temp file, then rename) to prevent truncation on crash.
 fn cleanup_tracked_sessions() {
     let path = tracked_sessions_path();
     if !path.exists() {
@@ -2360,10 +2361,13 @@ fn cleanup_tracked_sessions() {
         })
         .collect();
     if clean.len() < lines.len() {
-        if let Ok(mut f) = std::fs::File::create(&path) {
-            for line in clean {
+        // Atomic write: temp file + rename to prevent truncation
+        let tmp = path.with_extension("txt.tmp");
+        if let Ok(mut f) = std::fs::File::create(&tmp) {
+            for line in &clean {
                 let _ = writeln!(f, "{}", line.trim());
             }
+            let _ = std::fs::rename(&tmp, &path);
         }
     }
 }
