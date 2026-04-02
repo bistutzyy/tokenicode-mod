@@ -95,6 +95,10 @@ interface SessionState {
   loadCustomPreviewsFromDisk: () => Promise<void>;
   /** Get the last active session ID from localStorage (for app restart recovery) */
   getLastSessionId: () => string | null;
+  /** Search session content via backend */
+  searchSessionContent: (query: string) => Promise<void>;
+  /** Clear content search results */
+  clearContentSearch: () => void;
 }
 
 export const useSessionStore = create<SessionState>()((set, get) => ({
