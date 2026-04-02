@@ -275,4 +275,28 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   },
 
   getLastSessionId: () => loadLastSessionId(),
+
+  searchSessionContent: async (query: string) => {
+    set({ isContentSearching: true, contentSearchQuery: query });
+    try {
+      const results = await bridge.searchSessions(query);
+      // Stale check: discard if query has changed while awaiting
+      if (get().contentSearchQuery !== query) return;
+      const map = new Map<string, ContentSearchResult>();
+      for (const r of results) {
+        map.set(r.session_id, r);
+      }
+      set({ contentSearchResults: map, isContentSearching: false });
+    } catch {
+      set({ isContentSearching: false });
+    }
+  },
+
+  clearContentSearch: () => {
+    set({
+      contentSearchResults: new Map<string, ContentSearchResult>(),
+      isContentSearching: false,
+      contentSearchQuery: '',
+    });
+  },
 }));
