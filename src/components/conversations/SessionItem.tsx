@@ -52,6 +52,8 @@ export function SessionItem({
   onSelect,
   onContextMenu,
   onRename,
+  contentSnippet,
+  matchCount,
   onToggleCheck,
   triggerRename,
   onRenameDone,
