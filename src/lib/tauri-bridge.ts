@@ -42,6 +42,13 @@ export interface SessionListItem {
   preview: string;
 }
 
+export interface ContentSearchResult {
+  session_id: string;
+  snippet: string;
+  match_count: number;
+  match_role: 'user' | 'assistant';
+}
+
 export interface FileNode {
   name: string;
   path: string;
