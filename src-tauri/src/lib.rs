@@ -2388,8 +2388,12 @@ async fn delete_session(session_id: String, session_path: String) -> Result<(), 
                 .filter(|line| line.trim() != session_id)
                 .collect()
         };
-        std::fs::write(&track_path, contents.join("\n") + "\n")
-            .map_err(|e| format!("Failed to update tracked sessions: {}", e))?;
+        // Atomic write: temp file + rename to prevent truncation on crash
+        let tmp = track_path.with_extension("txt.tmp");
+        std::fs::write(&tmp, contents.join("\n") + "\n")
+            .map_err(|e| format!("Failed to write tracked sessions: {}", e))?;
+        std::fs::rename(&tmp, &track_path)
+            .map_err(|e| format!("Failed to rename tracked sessions: {}", e))?;
     }
     // Delete the .jsonl file — validate path is under ~/.claude/projects/ (P0-1 fix)
     if !session_path.is_empty() {
