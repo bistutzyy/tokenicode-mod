@@ -205,6 +205,9 @@ export const bridge = {
   listSessions: () =>
     invoke<SessionListItem[]>('list_sessions'),
 
+  searchSessions: (query: string) =>
+    invoke<ContentSearchResult[]>('search_sessions', { query }),
+
   loadSession: (path: string) =>
     invoke<any[]>('load_session', { path }),
 
