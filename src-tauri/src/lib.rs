@@ -2254,7 +2254,9 @@ fn tracked_sessions_path() -> std::path::PathBuf {
     home.join(".tokenicode").join("tracked_sessions.txt")
 }
 
-/// Load the set of tracked session IDs
+/// Load the set of tracked session IDs.
+/// If the tracking file is missing or empty, rebuild from ~/.claude/projects/
+/// to recover from index loss (e.g., after update, disk issue, new machine).
 fn load_tracked_sessions() -> std::collections::HashSet<String> {
     use std::io::BufRead;
     let path = tracked_sessions_path();
@@ -2267,6 +2269,52 @@ fn load_tracked_sessions() -> std::collections::HashSet<String> {
             }
         }
     }
+
+    // Fallback: if tracking file is missing/empty, rebuild from disk.
+    // All JSONL files in ~/.claude/projects/ are real sessions — adopt them all.
+    if set.is_empty() {
+        if let Some(home) = dirs::home_dir() {
+            let claude_projects = home.join(".claude").join("projects");
+            if claude_projects.exists() {
+                if let Ok(entries) = std::fs::read_dir(&claude_projects) {
+                    for entry in entries.flatten() {
+                        if entry.path().is_dir() {
+                            if let Ok(files) = std::fs::read_dir(entry.path()) {
+                                for file in files.flatten() {
+                                    let p = file.path();
+                                    if p.extension().map_or(false, |e| e == "jsonl") {
+                                        if let Some(stem) = p.file_stem() {
+                                            let id = stem.to_string_lossy().to_string();
+                                            if !id.starts_with("desk_") {
+                                                set.insert(id);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Persist the rebuilt index so subsequent loads are fast
+                if !set.is_empty() {
+                    if let Some(parent) = path.parent() {
+                        let _ = std::fs::create_dir_all(parent);
+                    }
+                    use std::io::Write;
+                    if let Ok(mut f) = std::fs::File::create(&path) {
+                        for id in &set {
+                            let _ = writeln!(f, "{}", id);
+                        }
+                    }
+                    eprintln!(
+                        "[TOKENICODE] Rebuilt tracked_sessions.txt from disk: {} sessions recovered",
+                        set.len()
+                    );
+                }
+            }
+        }
+    }
+
     set
 }
 
