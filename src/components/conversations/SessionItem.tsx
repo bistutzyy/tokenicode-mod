@@ -186,6 +186,20 @@ export function SessionItem({
             animate-pulse-soft" />
         )}
       </div>
+      {contentSnippet && (
+        <div className="flex items-center gap-1 mt-0.5 text-[10px] text-text-muted leading-tight">
+          <svg width="8" height="8" viewBox="0 0 16 16" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+            className="flex-shrink-0 text-accent/40">
+            <circle cx="7" cy="7" r="5" />
+            <path d="M14 14l-3-3" />
+          </svg>
+          {matchCount && matchCount > 1 && (
+            <span className="text-accent/60 font-medium flex-shrink-0">{matchCount}x</span>
+          )}
+          <span className="truncate">{contentSnippet}</span>
+        </div>
+      )}
     </button>
   );
 }
