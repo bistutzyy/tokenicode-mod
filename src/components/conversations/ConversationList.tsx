@@ -79,6 +79,10 @@ export function ConversationList() {
   const customPreviews = useSessionStore((s) => s.customPreviews);
   const setCustomPreview = useSessionStore((s) => s.setCustomPreview);
   const runningSessions = useSessionStore((s) => s.runningSessions);
+  const contentSearchResults = useSessionStore((s) => s.contentSearchResults);
+  const isContentSearching = useSessionStore((s) => s.isContentSearching);
+  const searchSessionContent = useSessionStore((s) => s.searchSessionContent);
+  const clearContentSearch = useSessionStore((s) => s.clearContentSearch);
 
   // Context menus
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
