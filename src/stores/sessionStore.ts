@@ -110,6 +110,9 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
   customPreviews: loadCustomPreviewsSync(),
   runningSessions: new Set<string>(),
   stdinToTab: loadStdinToTabSync(),
+  contentSearchResults: new Map<string, ContentSearchResult>(),
+  isContentSearching: false,
+  contentSearchQuery: '',
 
   fetchSessions: async () => {
     const isFirstLoad = get().sessions.length === 0;
