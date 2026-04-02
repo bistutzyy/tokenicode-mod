@@ -2507,6 +2507,200 @@ async fn list_sessions() -> Result<Vec<Value>, String> {
     Ok(sessions)
 }
 
+/// Search across tracked session JSONL files for a query string.
+/// Returns matching sessions with snippets, sorted by match_count descending (max 50).
+#[tauri::command]
+async fn search_sessions(query: String) -> Result<Vec<Value>, String> {
+    if query.len() < 2 {
+        return Ok(vec![]);
+    }
+
+    let home = dirs::home_dir().ok_or("Cannot find home dir")?;
+    let claude_dir = home.join(".claude").join("projects");
+
+    if !claude_dir.exists() {
+        return Ok(vec![]);
+    }
+
+    let tracked = load_tracked_sessions();
+    let query_lower = query.to_lowercase();
+
+    let mut results: Vec<Value> = Vec::new();
+
+    if let Ok(entries) = std::fs::read_dir(&claude_dir) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                if let Ok(files) = std::fs::read_dir(entry.path()) {
+                    for file in files.flatten() {
+                        let path = file.path();
+                        if path.extension().map_or(false, |e| e == "jsonl") {
+                            if let Some(name) = path.file_stem() {
+                                let id = name.to_string_lossy().to_string();
+                                if !tracked.contains(&id) {
+                                    continue;
+                                }
+                                if let Some(result) = search_session_file(&path, &query_lower) {
+                                    results.push(result);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort by match_count descending
+    results.sort_by(|a, b| {
+        let ca = a["match_count"].as_u64().unwrap_or(0);
+        let cb = b["match_count"].as_u64().unwrap_or(0);
+        cb.cmp(&ca)
+    });
+
+    results.truncate(50);
+    Ok(results)
+}
+
+/// Search a single session JSONL file for the query string.
+/// Returns a JSON value with session_id, snippet, match_count, and match_role if any matches found.
+fn search_session_file(path: &std::path::Path, query_lower: &str) -> Option<serde_json::Value> {
+    use std::io::BufRead;
+
+    let file = std::fs::File::open(path).ok()?;
+    let reader = std::io::BufReader::new(file);
+
+    let session_id = path.file_stem()?.to_string_lossy().to_string();
+
+    let mut match_count: u64 = 0;
+    let mut first_snippet = String::new();
+    let mut first_role = String::new();
+    let mut snippets_collected: usize = 0;
+
+    for line in reader.lines() {
+        let line = match line {
+            Ok(l) => l,
+            Err(_) => continue,
+        };
+
+        // Quick rejection: skip lines where the query doesn't appear at all
+        let line_lower = line.to_lowercase();
+        if !line_lower.contains(query_lower) {
+            continue;
+        }
+
+        // Skip lines that aren't user or assistant messages (raw string check before JSON parse)
+        if !line.contains("\"type\":\"user\"")
+            && !line.contains("\"type\":\"human\"")
+            && !line.contains("\"type\":\"assistant\"")
+            && !line.contains("\"type\": \"user\"")
+            && !line.contains("\"type\": \"human\"")
+            && !line.contains("\"type\": \"assistant\"")
+            && !line.contains("\"role\":\"user\"")
+            && !line.contains("\"role\":\"assistant\"")
+            && !line.contains("\"role\": \"user\"")
+            && !line.contains("\"role\": \"assistant\"")
+        {
+            continue;
+        }
+
+        let obj: Value = match serde_json::from_str(&line) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        // Determine role
+        let role = if obj["type"].as_str() == Some("human")
+            || obj["type"].as_str() == Some("user")
+            || obj["message"]["role"].as_str() == Some("user")
+        {
+            "user"
+        } else if obj["type"].as_str() == Some("assistant")
+            || obj["message"]["role"].as_str() == Some("assistant")
+        {
+            "assistant"
+        } else {
+            continue;
+        };
+
+        // Skip meta and sidechain messages
+        if obj["isMeta"].as_bool() == Some(true) || obj["isSidechain"].as_bool() == Some(true) {
+            continue;
+        }
+
+        // Extract text from content blocks
+        let content_arr = obj["content"]
+            .as_array()
+            .or_else(|| obj["message"]["content"].as_array());
+
+        let mut text_parts: Vec<String> = Vec::new();
+        if let Some(blocks) = content_arr {
+            for block in blocks {
+                let block_type = block["type"].as_str().unwrap_or("");
+                if block_type == "tool_result"
+                    || block_type == "tool_use"
+                    || block_type == "thinking"
+                    || block_type == "image"
+                {
+                    continue;
+                }
+                if block_type == "text" {
+                    if let Some(text) = block["text"].as_str() {
+                        text_parts.push(text.to_string());
+                    }
+                }
+            }
+        }
+
+        let full_text = text_parts.join(" ");
+        let full_text_lower = full_text.to_lowercase();
+
+        if !full_text_lower.contains(query_lower) {
+            continue;
+        }
+
+        match_count += 1;
+
+        if snippets_collected < 3 {
+            // Extract snippet using char indices for Unicode safety
+            let chars: Vec<char> = full_text_lower.chars().collect();
+            if let Some(char_pos) = chars
+                .windows(query_lower.chars().count())
+                .position(|w| w.iter().collect::<String>() == query_lower)
+            {
+                let original_chars: Vec<char> = full_text.chars().collect();
+                let total_chars = original_chars.len();
+                let start = if char_pos > 50 { char_pos - 50 } else { 0 };
+                let end = std::cmp::min(total_chars, char_pos + query_lower.chars().count() + 50);
+
+                let mut snippet: String = original_chars[start..end].iter().collect();
+                if start > 0 {
+                    snippet = format!("...{}", snippet);
+                }
+                if end < total_chars {
+                    snippet = format!("{}...", snippet);
+                }
+
+                if snippets_collected == 0 {
+                    first_snippet = snippet;
+                    first_role = role.to_string();
+                }
+                snippets_collected += 1;
+            }
+        }
+    }
+
+    if match_count > 0 {
+        Some(serde_json::json!({
+            "session_id": session_id,
+            "snippet": first_snippet,
+            "match_count": match_count,
+            "match_role": first_role,
+        }))
+    } else {
+        None
+    }
+}
+
 /// Extract preview (first user message) and cwd from a session .jsonl file.
 /// Returns (preview, cwd) — cwd may be empty if not found.
 fn extract_session_info(path: &std::path::Path) -> (String, String) {
