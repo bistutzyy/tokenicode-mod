@@ -19,6 +19,33 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.6',
+    date: '2026-04-03',
+    highlights: {
+      zh: ['4 个核心 Bug 修复 — 消息不再丢、图片能正常拖、流式不再卡'],
+      en: ['4 core bug fixes — messages no longer lost, images drag properly, streaming no longer freezes'],
+    },
+    categories: [
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            'AI 回复中补发消息不再丢失 — 排队等 AI 说完再自动发送',
+            '拖拽图片到对话框不再变成纯文本路径 — 现在有缩略图预览',
+            '第三方渠道（中转/Bedrock/Vertex）不再报 400 错误 — 自动关闭不兼容的 beta 功能',
+            '流式输出不再中途卡住 — 修复了后端读取中断和缓冲区数据丢失的问题',
+          ],
+          en: [
+            'Messages sent during AI reply no longer silently dropped — queued and auto-sent',
+            'Dragging images into chat now shows thumbnail previews instead of bare file paths',
+            'Third-party providers (proxies/Bedrock/Vertex) no longer get 400 errors from beta flags',
+            'Streaming output no longer freezes mid-response — fixed backend read errors and buffer data loss',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.9.4',
     date: '2026-03-31',
     highlights: {

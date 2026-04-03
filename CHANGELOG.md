@@ -6,6 +6,17 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.9.6] - 2026-04-03
+
+### Fixed
+
+- **AI 回复中补发消息不再丢失** — 流式回复期间的消息统一排队，当前 turn 完成后自动逐条发送（#70 port of Her#142）
+- **拖拽图片不再变成纯文本路径** — 图片走附件通道（带缩略图预览），非图片文件仍走 file chip（#70）
+- **第三方渠道不再报 400 错误** — 所有非 Anthropic 原生渠道自动禁用 beta flags，不再只检测 Bedrock URL（#69）
+- **流式输出渲染中断修复** — Rust 端 stdout 读取循环 IO 错误不再静默退出 + emit 连续失败自动止损 + 后台 tab 退出前强制刷新缓冲区（#64）
+
+---
+
 ## [0.9.5] - 2026-04-02
 
 ### Added
