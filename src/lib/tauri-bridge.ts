@@ -350,6 +350,12 @@ export const bridge = {
   cleanupOldCli: (targets: string[]) =>
     invoke<CleanupResult>('cleanup_old_cli', { targets }),
 
+  pinCli: (path: string) => invoke<void>('pin_cli', { path }),
+  unpinCli: () => invoke<void>('unpin_cli'),
+  getPinnedCli: () => invoke<string | null>('get_pinned_cli'),
+  injectCliPath: (path: string) => invoke<string>('inject_cli_path', { path }),
+  deleteCli: (path: string) => invoke<string>('delete_cli', { path }),
+
   installClaudeCli: () =>
     invoke<void>('install_claude_cli'),
 

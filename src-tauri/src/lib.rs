@@ -4432,6 +4432,31 @@ async fn cleanup_old_cli(targets: Vec<String>) -> Result<commands::cli_resolver:
     Ok(commands::cli_resolver::cleanup(&targets))
 }
 
+#[tauri::command]
+async fn pin_cli(path: String) -> Result<(), String> {
+    commands::cli_resolver::pin_cli(&path)
+}
+
+#[tauri::command]
+async fn unpin_cli() -> Result<(), String> {
+    commands::cli_resolver::unpin_cli()
+}
+
+#[tauri::command]
+async fn get_pinned_cli() -> Result<Option<String>, String> {
+    Ok(commands::cli_resolver::get_pinned_cli())
+}
+
+#[tauri::command]
+async fn inject_cli_path(path: String) -> Result<String, String> {
+    commands::cli_resolver::inject_path(&path)
+}
+
+#[tauri::command]
+async fn delete_cli(path: String) -> Result<String, String> {
+    commands::cli_resolver::delete_cli(&path)
+}
+
 /// Detect whether the user is behind the GFW (China network).
 /// Tries to connect to Google — if unreachable within 3 seconds, assume China network.
 /// Result is cached for the lifetime of the process via OnceLock.
@@ -6465,6 +6490,11 @@ pub fn run() {
             check_claude_cli,
             diagnose_cli,
             cleanup_old_cli,
+            pin_cli,
+            unpin_cli,
+            get_pinned_cli,
+            inject_cli_path,
+            delete_cli,
             install_claude_cli,
             update_claude_cli,
             check_cli_update,

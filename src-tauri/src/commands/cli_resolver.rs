@@ -256,6 +256,62 @@ fn shebang_issues(path: &Path, enriched_path: &str) -> Vec<String> {
     issues
 }
 
+// ─── Subprocess with timeout ───────────────────────────────
+
+/// Run a command with a timeout. Returns stdout on success, empty string on timeout/failure.
+fn cmd_with_timeout(cmd: &str, args: &[&str], timeout_secs: u64) -> String {
+    #[cfg(target_os = "windows")]
+    let mut child = match std::process::Command::new(cmd)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .creation_flags(0x08000000)
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(_) => return String::new(),
+    };
+    #[cfg(not(target_os = "windows"))]
+    let mut child = match std::process::Command::new(cmd)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(_) => return String::new(),
+    };
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                if status.success() {
+                    let mut buf = String::new();
+                    if let Some(mut stdout) = child.stdout.take() {
+                        use std::io::Read;
+                        let _ = stdout.read_to_string(&mut buf);
+                    }
+                    return buf.trim().to_string();
+                }
+                return String::new();
+            }
+            Ok(None) => {
+                if std::time::Instant::now() > deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    eprintln!("[cli_resolver] cmd_with_timeout: '{}' timed out ({}s)", cmd, timeout_secs);
+                    return String::new();
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            Err(_) => return String::new(),
+        }
+    }
+}
+
 // ─── Tier collection ───────────────────────────────────────
 
 fn collect_tiered_dirs() -> Vec<TieredDir> {
@@ -369,40 +425,25 @@ fn collect_tiered_dirs() -> Vec<TieredDir> {
             push("/usr/local/bin".to_string(), CliSource::System);
             push("/opt/homebrew/bin".to_string(), CliSource::System);
         }
-        // npm root -g derived bin directory
+        // npm root -g derived bin directory (3s timeout to avoid blocking)
         #[cfg(not(target_os = "windows"))]
         {
-            if let Ok(output) = std::process::Command::new("npm")
-                .args(["root", "-g"])
-                .stdin(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .output()
-            {
-                if output.status.success() {
-                    let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                    if let Some(lib_dir) = Path::new(&root).parent() {
-                        let npm_bin = lib_dir.join("bin");
-                        if npm_bin.exists() {
-                            push(npm_bin.to_string_lossy().to_string(), CliSource::System);
-                        }
+            let root = cmd_with_timeout("npm", &["root", "-g"], 3);
+            if !root.is_empty() {
+                if let Some(lib_dir) = Path::new(&root).parent() {
+                    let npm_bin = lib_dir.join("bin");
+                    if npm_bin.exists() {
+                        push(npm_bin.to_string_lossy().to_string(), CliSource::System);
                     }
                 }
             }
         }
         #[cfg(target_os = "windows")]
         {
-            if let Ok(output) = std::process::Command::new("cmd")
-                .args(["/C", "npm", "root", "-g"])
-                .stdin(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .creation_flags(0x08000000)
-                .output()
-            {
-                if output.status.success() {
-                    let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                    if let Some(lib_dir) = Path::new(&root).parent() {
-                        push(lib_dir.to_string_lossy().to_string(), CliSource::System);
-                    }
+            let root = cmd_with_timeout("cmd", &["/C", "npm", "root", "-g"], 3);
+            if !root.is_empty() {
+                if let Some(lib_dir) = Path::new(&root).parent() {
+                    push(lib_dir.to_string_lossy().to_string(), CliSource::System);
                 }
             }
         }
@@ -532,38 +573,24 @@ fn collect_tiered_dirs() -> Vec<TieredDir> {
         }
     }
 
-    // which/where fallback
+    // which/where fallback (3s timeout)
     #[cfg(not(target_os = "windows"))]
     {
-        if let Ok(output) = std::process::Command::new("which")
-            .arg(bin_name)
-            .stdin(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .output()
-        {
-            if output.status.success() {
-                let p = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if let Some(dir) = Path::new(&p).parent() {
-                    push(dir.to_string_lossy().to_string(), CliSource::Dynamic);
-                }
+        let p = cmd_with_timeout("which", &[bin_name], 3);
+        if !p.is_empty() && Path::new(&p).exists() {
+            if let Some(dir) = Path::new(&p).parent() {
+                push(dir.to_string_lossy().to_string(), CliSource::Dynamic);
             }
         }
     }
     #[cfg(target_os = "windows")]
     {
-        if let Ok(output) = std::process::Command::new("cmd")
-            .args(["/C", "where", bin_name])
-            .stdin(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .creation_flags(0x08000000)
-            .output()
-        {
-            if output.status.success() {
-                if let Some(line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-                    let p = line.trim().to_string();
-                    if let Some(dir) = Path::new(&p).parent() {
-                        push(dir.to_string_lossy().to_string(), CliSource::Dynamic);
-                    }
+        let result = cmd_with_timeout("cmd", &["/C", "where", bin_name], 3);
+        if let Some(line) = result.lines().next() {
+            let p = line.trim().to_string();
+            if !p.is_empty() {
+                if let Some(dir) = Path::new(&p).parent() {
+                    push(dir.to_string_lossy().to_string(), CliSource::Dynamic);
                 }
             }
         }
@@ -861,7 +888,180 @@ fn classify_path(path: &str) -> CliSource {
 /// Drop-in replacement for the old `find_claude_binary()`.
 /// Returns just the path, discarding the source tier.
 pub fn find_binary() -> Option<String> {
+    // Check pinned CLI first
+    if let Some(pinned) = get_pinned_cli() {
+        let p = Path::new(&pinned);
+        if is_native_binary(p) || is_valid_executable(p) {
+            return Some(pinned);
+        }
+        eprintln!("[cli_resolver] pinned CLI '{}' is no longer valid, falling back", pinned);
+    }
     resolve().map(|(path, _)| path)
+}
+
+// ─── CLI Pinning ───────────────────────────────────────────
+
+/// Pin file lives in ~/.her/ (survives app updates).
+fn pin_file_path() -> Option<PathBuf> {
+    dirs::home_dir().map(|h| h.join(".her").join("cli-pin.json"))
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct CliPin {
+    path: String,
+}
+
+/// Get the currently pinned CLI path, if any.
+pub fn get_pinned_cli() -> Option<String> {
+    let pin_path = pin_file_path()?;
+    let content = std::fs::read_to_string(&pin_path).ok()?;
+    let pin: CliPin = serde_json::from_str(&content).ok()?;
+    if pin.path.is_empty() {
+        None
+    } else {
+        Some(pin.path)
+    }
+}
+
+/// Pin a specific CLI binary as the preferred one.
+pub fn pin_cli(path: &str) -> Result<(), String> {
+    let pin_path = pin_file_path().ok_or("Cannot determine home directory")?;
+    if let Some(parent) = pin_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create dir: {}", e))?;
+    }
+    let pin = CliPin { path: path.to_string() };
+    let json = serde_json::to_string_pretty(&pin)
+        .map_err(|e| format!("JSON error: {}", e))?;
+    std::fs::write(&pin_path, json)
+        .map_err(|e| format!("Failed to write pin file: {}", e))?;
+    eprintln!("[cli_resolver] pinned CLI: {}", path);
+    Ok(())
+}
+
+/// Remove the CLI pin (go back to auto-detection).
+pub fn unpin_cli() -> Result<(), String> {
+    if let Some(pin_path) = pin_file_path() {
+        if pin_path.exists() {
+            std::fs::remove_file(&pin_path)
+                .map_err(|e| format!("Failed to remove pin file: {}", e))?;
+            eprintln!("[cli_resolver] unpinned CLI");
+        }
+    }
+    Ok(())
+}
+
+// ─── PATH Injection ────────────────────────────────────────
+
+/// Inject a CLI's directory into the user's shell PATH profile.
+/// Returns the shell profile file that was modified.
+#[cfg(not(target_os = "windows"))]
+pub fn inject_path(cli_path: &str) -> Result<String, String> {
+    let dir = Path::new(cli_path)
+        .parent()
+        .ok_or("Cannot determine CLI directory")?
+        .to_string_lossy()
+        .to_string();
+
+    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
+    let export_line = format!("export PATH=\"{}:$PATH\"", dir);
+    let marker = "# Added by Her";
+    let block = format!("\n{}\n{}\n", marker, export_line);
+
+    let profiles = [
+        home.join(".zshrc"),
+        home.join(".bashrc"),
+        home.join(".bash_profile"),
+        home.join(".profile"),
+    ];
+
+    // Check if already injected
+    for p in &profiles {
+        if let Ok(c) = std::fs::read_to_string(p) {
+            if c.contains(&export_line) {
+                return Ok(format!("Already in {}", p.display()));
+            }
+        }
+    }
+
+    // Append to the first existing profile
+    for p in &profiles {
+        if p.exists() {
+            if let Ok(mut f) = std::fs::OpenOptions::new().append(true).open(p) {
+                use std::io::Write;
+                f.write_all(block.as_bytes())
+                    .map_err(|e| format!("Write failed: {}", e))?;
+                return Ok(format!("Injected into {}", p.display()));
+            }
+        }
+    }
+
+    // None exist — create ~/.zshrc
+    std::fs::write(home.join(".zshrc"), block)
+        .map_err(|e| format!("Failed to create .zshrc: {}", e))?;
+    Ok("Created ~/.zshrc with PATH".to_string())
+}
+
+#[cfg(target_os = "windows")]
+pub fn inject_path(cli_path: &str) -> Result<String, String> {
+    let dir = Path::new(cli_path)
+        .parent()
+        .ok_or("Cannot determine CLI directory")?
+        .to_string_lossy()
+        .to_string();
+
+    let ps_script = format!(
+        "$old = [Environment]::GetEnvironmentVariable('Path','User'); \
+         if ($old -and -not $old.Contains('{}')) {{ \
+           [Environment]::SetEnvironmentVariable('Path', '{}' + ';' + $old, 'User') \
+         }} elseif (-not $old) {{ \
+           [Environment]::SetEnvironmentVariable('Path', '{}', 'User') \
+         }}",
+        dir.replace('\'', "''"),
+        dir.replace('\'', "''"),
+        dir.replace('\'', "''"),
+    );
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &ps_script])
+        .creation_flags(0x08000000)
+        .output()
+        .map_err(|e| format!("PowerShell failed: {}", e))?;
+
+    if output.status.success() {
+        Ok(format!("Added {} to user PATH", dir))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("Failed: {}", stderr))
+    }
+}
+
+// ─── Delete CLI ────────────────────────────────────────────
+
+/// Delete a specific CLI binary. Refuses to delete Official tier.
+pub fn delete_cli(path: &str) -> Result<String, String> {
+    let source = classify_path(path);
+
+    if source == CliSource::Official {
+        return Err("Cannot delete Official Anthropic installation. Uninstall via Claude Desktop.".to_string());
+    }
+
+    let p = Path::new(path);
+    if !p.exists() {
+        return Err(format!("File not found: {}", path));
+    }
+
+    std::fs::remove_file(p)
+        .map_err(|e| format!("Delete failed: {}", e))?;
+
+    // If pinned CLI was deleted, unpin it
+    if let Some(pinned) = get_pinned_cli() {
+        if pinned == path {
+            let _ = unpin_cli();
+        }
+    }
+
+    eprintln!("[cli_resolver] deleted CLI: {} (source: {})", path, source);
+    Ok(format!("Deleted {}", path))
 }
 
 // ─── Tests ─────────────────────────────────────────────────

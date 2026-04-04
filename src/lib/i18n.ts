@@ -613,6 +613,14 @@ const messages: Record<Locale, Record<string, string>> = {
     'cli.source.appLocal': '自部署',
     'cli.source.versionManager': '版本管理器',
     'cli.source.dynamic': '环境变量',
+    'cli.use': '使用此版本',
+    'cli.pinned': '已选定',
+    'cli.unpinned': '已取消选定',
+    'cli.unpin': '取消选定',
+    'cli.injectPath': '注入 PATH',
+    'cli.delete': '删除',
+    'cli.confirmDelete': '确定要删除此 CLI 吗？',
+    'cli.inUse': '使用中',
 
     // Update
     'update.check': '检查更新',
@@ -1292,6 +1300,14 @@ const messages: Record<Locale, Record<string, string>> = {
     'cli.source.appLocal': 'App',
     'cli.source.versionManager': 'VM',
     'cli.source.dynamic': 'PATH',
+    'cli.use': 'Use This',
+    'cli.pinned': 'Pinned',
+    'cli.unpinned': 'Unpinned',
+    'cli.unpin': 'Unpin',
+    'cli.injectPath': 'Inject PATH',
+    'cli.delete': 'Delete',
+    'cli.confirmDelete': 'Are you sure you want to delete this CLI?',
+    'cli.inUse': 'In Use',
 
     // Update
     'update.check': 'Check for Updates',

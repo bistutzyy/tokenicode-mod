@@ -382,19 +382,22 @@ export function CliTab() {
 
 function CliDiagnostics() {
   const t = useT();
-  const [expanded, setExpanded] = useState(false);
   const [candidates, setCandidates] = useState<CliCandidate[]>([]);
+  const [pinnedPath, setPinnedPath] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [cleaning, setCleaning] = useState(false);
-  const [cleanMsg, setCleanMsg] = useState('');
+  const [actionMsg, setActionMsg] = useState('');
 
+  // Auto-scan on mount
   const handleScan = useCallback(async () => {
     setScanning(true);
-    setCleanMsg('');
+    setActionMsg('');
     try {
-      const result = await bridge.diagnoseCli();
+      const [result, pinned] = await Promise.all([
+        bridge.diagnoseCli(),
+        bridge.getPinnedCli(),
+      ]);
       setCandidates(result);
-      setExpanded(true);
+      setPinnedPath(pinned);
     } catch (e) {
       console.error('diagnose_cli failed:', e);
     } finally {
@@ -402,118 +405,169 @@ function CliDiagnostics() {
     }
   }, []);
 
-  const handleCleanup = useCallback(async (targets: string[]) => {
-    setCleaning(true);
-    setCleanMsg('');
+  useEffect(() => { handleScan(); }, [handleScan]);
+
+  const handlePin = useCallback(async (path: string) => {
     try {
-      const result = await bridge.cleanupOldCli(targets);
-      const msgs: string[] = [];
-      if (result.removed.length > 0) {
-        msgs.push(`Removed ${result.removed.length} file(s)`);
-      }
-      for (const s of result.skipped) {
-        msgs.push(`${s.path.split('/').pop()}: ${s.reason}`);
-      }
-      setCleanMsg(msgs.join(' · '));
-      // Re-scan after cleanup
-      const updated = await bridge.diagnoseCli();
-      setCandidates(updated);
+      await bridge.pinCli(path);
+      setPinnedPath(path);
+      setActionMsg(t('cli.pinned'));
     } catch (e) {
-      setCleanMsg(String(e));
-    } finally {
-      setCleaning(false);
+      setActionMsg(String(e));
+    }
+  }, [t]);
+
+  const handleUnpin = useCallback(async () => {
+    try {
+      await bridge.unpinCli();
+      setPinnedPath(null);
+      setActionMsg(t('cli.unpinned'));
+    } catch (e) {
+      setActionMsg(String(e));
+    }
+  }, [t]);
+
+  const handleInjectPath = useCallback(async (path: string) => {
+    try {
+      const result = await bridge.injectCliPath(path);
+      setActionMsg(result);
+    } catch (e) {
+      setActionMsg(String(e));
     }
   }, []);
 
-  const cleanableTargets = candidates
-    .filter(c => c.source === 'appLocal')
-    .map(c => c.path);
+  const handleDelete = useCallback(async (path: string) => {
+    const { ask } = await import('@tauri-apps/plugin-dialog');
+    const confirmed = await ask(
+      `${t('cli.confirmDelete')}\n${path}`,
+      { title: 'CLI', kind: 'warning' }
+    );
+    if (!confirmed) return;
+    try {
+      const result = await bridge.deleteCli(path);
+      setActionMsg(result);
+      const updated = await bridge.diagnoseCli();
+      setCandidates(updated);
+    } catch (e) {
+      setActionMsg(String(e));
+    }
+  }, [t]);
+
+  const isActive = (path: string) => pinnedPath ? path === pinnedPath : candidates[0]?.path === path;
 
   return (
-    <div className="pt-3 border-t border-border-subtle">
-      <button
-        onClick={() => {
-          if (!expanded && candidates.length === 0) {
-            handleScan();
-          } else {
-            setExpanded(!expanded);
-          }
-        }}
-        className="flex items-center gap-2 text-[13px] text-text-muted hover:text-text-primary transition-smooth"
-      >
-        <span className="text-[10px]">{expanded ? '▼' : '▶'}</span>
-        {t('cli.environment')}
-        {candidates.length > 0 && (
-          <span className="text-xs text-text-tertiary">({candidates.length})</span>
-        )}
-      </button>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[13px] font-medium text-text-primary">{t('cli.environment')}</span>
+        <button
+          onClick={handleScan}
+          disabled={scanning}
+          className="text-xs text-text-tertiary hover:text-text-primary transition-smooth disabled:opacity-50"
+        >
+          {scanning ? t('cli.scanning') : t('cli.rescan')}
+        </button>
+      </div>
 
-      {expanded && (
-        <div className="mt-2 space-y-2">
-          {scanning && (
-            <div className="flex items-center gap-2 py-2">
-              <div className="w-3 h-3 border-2 border-text-tertiary/30 border-t-text-tertiary rounded-full animate-spin" />
-              <span className="text-xs text-text-muted">{t('cli.scanning')}</span>
-            </div>
-          )}
+      {scanning && candidates.length === 0 && (
+        <div className="flex items-center justify-center gap-2 py-3">
+          <div className="w-4 h-4 border-2 border-text-tertiary/30
+            border-t-text-tertiary rounded-full animate-spin" />
+          <span className="text-[13px] text-text-muted">{t('cli.scanning')}</span>
+        </div>
+      )}
 
-          {!scanning && candidates.length === 0 && (
-            <p className="text-xs text-text-tertiary py-1">{t('cli.noCliFound')}</p>
-          )}
+      {!scanning && candidates.length === 0 && (
+        <p className="text-[13px] text-text-tertiary py-2">{t('cli.noCliFound')}</p>
+      )}
 
-          {candidates.map((c, i) => (
+      <div className="space-y-2">
+        {candidates.map((c) => {
+          const active = isActive(c.path);
+          const canDelete = c.source !== 'official';
+          return (
             <div
               key={c.path}
-              className={`flex items-start gap-2 py-1.5 px-2 rounded text-xs
-                ${i === 0 ? 'bg-bg-secondary' : ''}`}
+              className={`py-2.5 px-3 rounded-lg transition-smooth
+                ${active
+                  ? 'bg-accent/5 border border-accent/20'
+                  : 'bg-bg-secondary border border-transparent'
+                }`}
             >
-              <span className="shrink-0 mt-0.5">{i === 0 ? '●' : '○'}</span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className={`font-medium ${SOURCE_COLORS[c.source] || ''}`}>
-                    [{t(SOURCE_I18N_KEYS[c.source] || '') || c.source}]
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded
+                    ${SOURCE_COLORS[c.source] || 'text-text-tertiary'}
+                    ${active ? 'bg-accent/10' : 'bg-bg-tertiary/50'}`}
+                  >
+                    {t(SOURCE_I18N_KEYS[c.source] || '') || c.source}
                   </span>
-                  {c.version && <span className="text-text-secondary">v{c.version}</span>}
-                  {c.isNative && <span className="text-text-tertiary">(native)</span>}
+                  {c.version && (
+                    <span className="text-[13px] text-text-secondary font-medium">v{c.version}</span>
+                  )}
+                  {c.isNative && (
+                    <span className="text-[11px] text-text-tertiary">native</span>
+                  )}
+                  {active && pinnedPath && (
+                    <span className="text-[11px] text-accent font-medium">★</span>
+                  )}
                 </div>
-                <p className="text-text-tertiary truncate mt-0.5" title={c.path}>{c.path}</p>
-                {c.issues.length > 0 && (
-                  <p className="text-amber-500 mt-0.5">{c.issues.join(' · ')}</p>
+                {active && (
+                  <span className="text-[11px] text-accent font-medium shrink-0">{t('cli.inUse')}</span>
+                )}
+              </div>
+              <p className="text-xs text-text-tertiary truncate mt-1" title={c.path}>
+                {c.path}
+              </p>
+              {c.issues.length > 0 && (
+                <p className="text-xs text-amber-500 mt-1">{c.issues.join(' · ')}</p>
+              )}
+              {/* Actions */}
+              <div className="flex gap-2 mt-2">
+                {!active && c.issues.length === 0 && (
+                  <button
+                    onClick={() => handlePin(c.path)}
+                    className="py-1 px-2.5 text-xs font-medium rounded-md
+                      bg-accent text-text-inverse hover:bg-accent-hover transition-smooth"
+                  >
+                    {t('cli.use')}
+                  </button>
+                )}
+                {active && pinnedPath && (
+                  <button
+                    onClick={handleUnpin}
+                    className="py-1 px-2.5 text-xs font-medium rounded-md
+                      border border-border-subtle text-text-muted
+                      hover:bg-bg-tertiary transition-smooth"
+                  >
+                    {t('cli.unpin')}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleInjectPath(c.path)}
+                  className="py-1 px-2.5 text-xs font-medium rounded-md
+                    border border-border-subtle text-text-muted
+                    hover:bg-bg-tertiary transition-smooth"
+                >
+                  {t('cli.injectPath')}
+                </button>
+                {canDelete && (
+                  <button
+                    onClick={() => handleDelete(c.path)}
+                    className="py-1 px-2.5 text-xs font-medium rounded-md
+                      border border-red-500/20 text-red-400
+                      hover:bg-red-500/10 transition-smooth"
+                  >
+                    {t('cli.delete')}
+                  </button>
                 )}
               </div>
             </div>
-          ))}
+          );
+        })}
+      </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={handleScan}
-              disabled={scanning}
-              className="py-1 px-3 text-xs font-medium rounded
-                border border-border-subtle text-text-muted
-                hover:bg-bg-secondary hover:text-text-primary transition-smooth
-                disabled:opacity-50"
-            >
-              {scanning ? t('cli.scanning') : t('cli.rescan')}
-            </button>
-            {cleanableTargets.length > 0 && (
-              <button
-                onClick={() => handleCleanup(cleanableTargets)}
-                disabled={cleaning}
-                className="py-1 px-3 text-xs font-medium rounded
-                  border border-amber-500/30 text-amber-500
-                  hover:bg-amber-500/10 transition-smooth
-                  disabled:opacity-50"
-              >
-                {cleaning ? t('cli.cleaning') : `${t('cli.cleanAppLocal')} (${cleanableTargets.length})`}
-              </button>
-            )}
-          </div>
-
-          {cleanMsg && (
-            <p className="text-xs text-text-tertiary">{cleanMsg}</p>
-          )}
-        </div>
+      {actionMsg && (
+        <p className="text-xs text-text-tertiary">{actionMsg}</p>
       )}
     </div>
   );
