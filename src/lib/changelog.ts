@@ -19,6 +19,42 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-04-05',
+    highlights: {
+      zh: ['CLI 管理面板 + CLI 发现机制重构'],
+      en: ['CLI management panel + CLI discovery overhaul'],
+    },
+    categories: [
+      {
+        label: { zh: '新功能', en: 'New' },
+        items: {
+          zh: [
+            'CLI 管理面板 — 扫描所有 CLI 安装，按来源分层显示，支持 Pin/删除/PATH 注入',
+          ],
+          en: [
+            'CLI management panel — scan all CLI installations by source tier, Pin/delete/PATH inject',
+          ],
+        },
+      },
+      {
+        label: { zh: '改进', en: 'Improved' },
+        items: {
+          zh: [
+            'CLI 发现优先级重构：Official → System → 自部署 → 版本管理器 → 动态',
+            'CLI 更新智能路由：检测来源选择 native 或 npm 路线，不再全走 npm',
+            '重装前自动清理旧版本，防止残留干扰',
+          ],
+          en: [
+            'CLI discovery rewritten: Official → System → AppLocal → VersionManager → Dynamic',
+            'Smart CLI update routing: native binary for Official/System, npm for AppLocal',
+            'Auto-cleanup of stale CLI before reinstall',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.9.9',
     date: '2026-04-04',
     highlights: {
