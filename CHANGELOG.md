@@ -6,6 +6,21 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.9.7] - 2026-04-04
+
+### Added
+
+- **小米 MiMo Token Plan 预设** — 新增 Token Plan 订阅专属接入点，独立于普通 API
+- **CLI 更新功能** — 设置页新增「更新 CLI」按钮，一键升级到最新版 Claude Code CLI；启动时 + 每 30 分钟自动检测新版本，有更新时设置按钮显示红点提醒
+
+### Fixed
+
+- **测试连接误报修复** — 不再用假模型名测试认证，改用真实模型单次请求；MiMo 等渠道不再报错
+- **Opus 1M 模型选择修复** — Provider 激活时 Opus 和 Opus 1M 不再被合并，保留 1M 标识；模型选择重启后正确保持
+- **暗色模式文字对比度提升** — text-tertiary 40%→55%，text-muted 50%→62%，满足 WCAG AA 标准
+
+---
+
 ## [0.9.6] - 2026-04-03
 
 ### Fixed

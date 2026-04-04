@@ -19,6 +19,44 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.7',
+    date: '2026-04-04',
+    highlights: {
+      zh: ['CLI 一键更新 + MiMo Token Plan + 多项修复'],
+      en: ['One-click CLI update + MiMo Token Plan + multiple fixes'],
+    },
+    categories: [
+      {
+        label: { zh: '新功能', en: 'Added' },
+        items: {
+          zh: [
+            'MiMo Token Plan 预设 — 订阅用户专属接入点',
+            'CLI 更新按钮 — 设置页一键升级 + 自动检测新版本（红点提醒）',
+          ],
+          en: [
+            'MiMo Token Plan preset — dedicated endpoint for subscribers',
+            'CLI update button — one-click upgrade in settings + auto-detect new versions',
+          ],
+        },
+      },
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            '测试连接不再误报 — MiMo 等渠道点「测试」终于能过了',
+            'Opus 1M 选择修复 — 不再和 Opus 合并，重启后也不会重置',
+            '暗色模式文字更清晰 — 对比度提升至 WCAG AA 标准',
+          ],
+          en: [
+            'Connection test no longer false-fails for MiMo and similar providers',
+            'Opus 1M selection preserved — no longer merged with regular Opus',
+            'Dark mode text contrast improved to WCAG AA standard',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.9.6',
     date: '2026-04-03',
     highlights: {
