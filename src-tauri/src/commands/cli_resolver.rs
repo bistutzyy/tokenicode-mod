@@ -14,6 +14,9 @@ use serde::Serialize;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 // ─── Public Types ──────────────────────────────────────────
 
 /// Source tier for a discovered CLI binary.
