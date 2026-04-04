@@ -104,11 +104,31 @@ export function CliTab() {
   const handleUpdate = useCallback(async () => {
     setStatus('updating');
     setErrorMsg('');
+    setDownloadPercent(0);
+    setPhase('idle');
+
+    const { onDownloadProgress } = await import('../../lib/tauri-bridge');
+    const unlisten = await onDownloadProgress((event) => {
+      setDownloadPercent(event.percent);
+      const p = event.phase;
+      if (p === 'npm_fallback') {
+        setPhase('npm_fallback');
+      } else if (p === 'native_download') {
+        setPhase('native_download');
+      } else if (p === 'complete' || event.percent >= 100) {
+        setPhase('configuring');
+      }
+    });
+
     try {
       const newVersion = await bridge.updateClaudeCli();
+      unlisten();
       setCliVersion(newVersion);
       setStatus('updated');
+      // Clear the update badge
+      useSettingsStore.setState({ cliUpdateAvailable: false, cliLatestVersion: '' });
     } catch (e) {
+      unlisten();
       setErrorMsg(stripAnsi(String(e)));
       setStatus('update_failed');
     }
@@ -212,10 +232,28 @@ export function CliTab() {
       )}
 
       {status === 'updating' && (
-        <div className="flex items-center justify-center gap-2 py-2">
-          <div className="w-4 h-4 border-2 border-accent/30
-            border-t-accent rounded-full animate-spin" />
-          <span className="text-[13px] text-text-muted">{t('cli.updating')}</span>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] text-text-muted">
+              {phase === 'npm_fallback' ? t('setup.npmFallback')
+                : phase === 'native_download' ? t('setup.nativeDownload')
+                : phase === 'configuring' ? t('cli.configuring')
+                : t('cli.updating')}
+            </span>
+            {downloadPercent > 0 && downloadPercent < 100 && (
+              <span className="text-[13px] text-text-tertiary">{downloadPercent}%</span>
+            )}
+          </div>
+          <div className="w-full h-2 rounded-full bg-bg-tertiary overflow-hidden">
+            {downloadPercent > 0 ? (
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-300"
+                style={{ width: `${downloadPercent}%` }}
+              />
+            ) : (
+              <div className="h-full bg-accent/60 rounded-full animate-pulse w-full" />
+            )}
+          </div>
         </div>
       )}
 

@@ -4656,7 +4656,9 @@ async fn check_claude_cli() -> Result<CliStatus, String> {
                     if raw.is_empty() {
                         None
                     } else {
-                        Some(raw)
+                        // `claude --version` outputs "2.1.92 (Claude Code)" — extract just the semver
+                        let ver = raw.split_whitespace().next().unwrap_or(&raw).to_string();
+                        Some(ver)
                     }
                 }
                 Ok(_) => None,
@@ -4904,16 +4906,22 @@ async fn install_cli_via_npm(app: &AppHandle, china: bool) -> Result<(), String>
 }
 
 /// Compare two semver-style version strings (e.g. "2.1.92" > "2.1.81").
-/// Handles any "v" prefix and compares numerically per segment.
+/// Handles "v" prefix, "(Claude Code)" suffix, and non-numeric noise.
 fn version_gt(a: &str, b: &str) -> bool {
     let parse = |s: &str| -> Vec<u64> {
-        s.trim()
-            .trim_start_matches('v')
-            .split('.')
+        // Take only the first whitespace-delimited token ("2.1.92 (Claude Code)" → "2.1.92")
+        let ver = s.trim().trim_start_matches('v').split_whitespace().next().unwrap_or("");
+        ver.split('.')
             .filter_map(|p| p.parse::<u64>().ok())
             .collect()
     };
-    parse(a) > parse(b)
+    let va = parse(a);
+    let vb = parse(b);
+    // Only compare if both parsed to the same number of segments
+    if va.len() != vb.len() && (va.is_empty() || vb.is_empty()) {
+        return false;
+    }
+    va > vb
 }
 
 /// Return the platform key matching the server manifest (e.g. "win32-x64").
@@ -4932,19 +4940,21 @@ fn native_platform_key() -> &'static str {
     { "linux-arm64" }
 }
 
-/// Try to update the CLI by downloading a native binary from herear.cn / GCS.
-/// On success returns the installed version string.
+/// Try to update the CLI by downloading a native binary from GCS.
+/// Only used for non-China users (GCS is fast globally; herear.cn bandwidth is too small
+/// for ~230MB binaries). China users go straight to npm fallback with version verification.
 async fn try_native_cli_update(china: bool) -> Result<String, String> {
+    // Skip native binary download for China — GCS may be blocked, herear.cn bandwidth too small
+    if china {
+        return Err("Native binary download skipped for China network".to_string());
+    }
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| format!("HTTP client: {e}"))?;
 
-    let sources: Vec<&str> = if china {
-        vec![CLI_MIRROR_BASE, CLI_GCS_BASE]
-    } else {
-        vec![CLI_GCS_BASE, CLI_MIRROR_BASE]
-    };
+    let sources: Vec<&str> = vec![CLI_GCS_BASE];
 
     // 1. Fetch latest version
     let mut version: Option<String> = None;
@@ -5076,23 +5086,27 @@ async fn try_native_cli_update(china: bool) -> Result<String, String> {
 }
 
 /// Update the Claude CLI to the latest version.
-/// Strategy: native binary download (herear.cn / GCS) → npm fallback with multi-registry.
+/// Strategy:
+///   Non-China: native binary from GCS → npm fallback
+///   China: npm with multi-registry + version verification (npmmirror → npm official)
 #[tauri::command]
-async fn update_claude_cli() -> Result<String, String> {
+async fn update_claude_cli(app: AppHandle) -> Result<String, String> {
     let china = is_china_network().await;
 
-    // Phase 1: Try native binary download (bypasses npm entirely)
+    // Phase 1: Try native binary download (non-China only, GCS CDN)
     match try_native_cli_update(china).await {
         Ok(version) => {
             eprintln!("[update_claude_cli] native binary update success: v{}", version);
             return Ok(version);
         }
         Err(e) => {
-            eprintln!("[update_claude_cli] native binary failed: {}, falling back to npm", e);
+            eprintln!("[update_claude_cli] native binary skipped/failed: {}, using npm", e);
         }
     }
 
-    // Phase 2: Fall back to npm with multi-registry + version verification
+    // Phase 2: npm with multi-registry + version verification
+    // For China: npmmirror first (fast), verify version matches target,
+    // if stale → auto-retry with npm official
     let npm_path = if let Some(local_bin) = get_local_node_bin() {
         #[cfg(target_os = "windows")]
         let npm = local_bin.join("npm.cmd");
@@ -5114,6 +5128,29 @@ async fn update_claude_cli() -> Result<String, String> {
     let cache_dir = npm_cache_dir()?;
     std::fs::create_dir_all(&cache_dir).ok();
 
+    // Fetch target version for post-install verification (herear.cn for China, GCS for others)
+    let target_version = {
+        let c = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap_or_default();
+        let urls = if china {
+            vec![format!("{}/latest", CLI_MIRROR_BASE), format!("{}/latest", CLI_GCS_BASE)]
+        } else {
+            vec![format!("{}/latest", CLI_GCS_BASE)]
+        };
+        let mut ver: Option<String> = None;
+        for url in &urls {
+            if let Ok(resp) = c.get(url).send().await {
+                if let Ok(text) = resp.text().await {
+                    let v = text.trim().to_string();
+                    if !v.is_empty() { ver = Some(v); break; }
+                }
+            }
+        }
+        ver
+    };
+
     let registries: Vec<&str> = if china {
         vec![
             "https://registry.npmmirror.com",
@@ -5126,6 +5163,9 @@ async fn update_claude_cli() -> Result<String, String> {
     let mut last_err = String::new();
     for registry in &registries {
         eprintln!("[update_claude_cli] trying npm registry: {}", registry);
+        let _ = app.emit("setup:download:progress", serde_json::json!({
+            "downloaded": 0, "total": 0, "percent": 30, "phase": "npm_fallback"
+        }));
 
         let args: Vec<String> = vec![
             "install".to_string(),
@@ -5162,7 +5202,24 @@ async fn update_claude_cli() -> Result<String, String> {
                     path: None, git_bash_missing: false,
                 });
                 let version = check.version.unwrap_or_else(|| "unknown".to_string());
-                eprintln!("[update_claude_cli] npm success: v{} from {}", version, registry);
+                eprintln!("[update_claude_cli] npm installed v{} from {}", version, registry);
+                let _ = app.emit("setup:download:progress", serde_json::json!({
+                    "downloaded": 0, "total": 0, "percent": 100, "phase": "complete"
+                }));
+
+                // Version verification: if target is known and installed version is stale,
+                // try next registry (npmmirror may be behind)
+                if let Some(ref target) = target_version {
+                    if version != *target && version_gt(target, &version) {
+                        eprintln!(
+                            "[update_claude_cli] v{} < target v{}, trying next registry",
+                            version, target
+                        );
+                        last_err = format!("Mirror {} has v{} but latest is v{}", registry, version, target);
+                        continue;
+                    }
+                }
+
                 return Ok(version);
             }
             Ok(Ok(output)) => {

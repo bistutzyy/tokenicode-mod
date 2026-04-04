@@ -19,25 +19,27 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '0.9.8',
+    version: '0.9.9',
     date: '2026-04-04',
     highlights: {
-      zh: ['CLI 更新走自有镜像，彻底解决国内更新慢/版本滞后问题'],
-      en: ['CLI updates via self-hosted mirror, fixing slow/stale updates in China'],
+      zh: ['CLI 更新体验全面优化：进度条 + 版本校验 + 镜像加速'],
+      en: ['CLI update UX overhaul: progress bar + version verification + mirror acceleration'],
     },
     categories: [
       {
         label: { zh: '修复', en: 'Fixed' },
         items: {
           zh: [
-            'CLI 更新优先从 herear.cn 下载原生二进制，跳过 npm 镜像同步延迟',
-            '版本检查改用语义化比较，修复 "2.1.9 vs 2.1.10" 等边界情况',
-            '中国用户版本检查走 herear.cn 镜像，不再依赖被墙的 GCS',
+            'CLI 更新增加进度条，不再只有转圈动画',
+            'npm 镜像版本过期时自动回退到官方源重试',
+            '版本检查走 herear.cn 镜像 + 语义化比较，修复误报「有新版本」',
+            '设置页 CLI 管理标签显示红点，一眼知道是什么要更新',
           ],
           en: [
-            'CLI updates now download native binaries from herear.cn, bypassing npm mirror sync delays',
-            'Version comparison uses proper semver instead of string comparison',
-            'China users check versions via herear.cn mirror instead of blocked GCS',
+            'CLI update now shows progress bar instead of just a spinner',
+            'Stale npm mirror auto-retries with official registry',
+            'Version check via herear.cn mirror + proper semver comparison, fixing false update prompts',
+            'CLI tab in settings shows red dot when update is available',
           ],
         },
       },

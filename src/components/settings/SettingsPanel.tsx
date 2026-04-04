@@ -108,6 +108,9 @@ export function SettingsPanel() {
               >
                 <span className="flex-shrink-0 opacity-70">{TAB_ICONS[tab.id]}</span>
                 {t(tab.labelKey)}
+                {tab.id === 'cli' && useSettingsStore.getState().cliUpdateAvailable && (
+                  <span className="ml-auto w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                )}
               </button>
             ))}
           </nav>
