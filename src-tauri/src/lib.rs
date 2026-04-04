@@ -1262,16 +1262,19 @@ async fn test_provider_connection(
         }
     };
 
-    // Step 2: Auth — minimal request with API key, dummy model name
+    // Step 2: Auth — minimal request with API key, using the REAL model name.
+    // Previously used a dummy "test-auth-probe" model, but some providers (e.g. MiMo)
+    // tie model access to API key permissions and return 403 for unknown models,
+    // causing a false "auth failed" when the key is actually valid.
     let auth_body = if api_format == "openai" {
         serde_json::json!({
-            "model": "test-auth-probe",
+            "model": model,
             "max_tokens": 1,
             "messages": [{"role": "user", "content": "hi"}]
         })
     } else {
         serde_json::json!({
-            "model": "test-auth-probe",
+            "model": model,
             "max_tokens": 1,
             "messages": [{"role": "user", "content": "hi"}]
         })
