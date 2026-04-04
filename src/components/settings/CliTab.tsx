@@ -201,7 +201,8 @@ export function CliTab() {
             <button
               onClick={handleUpdate}
               className="flex-1 py-2 text-[13px] font-medium rounded-lg
-                bg-accent text-text-inverse hover:bg-accent-hover transition-smooth"
+                border border-border-subtle text-text-muted
+                hover:bg-bg-secondary hover:text-text-primary transition-smooth"
             >
               {t('cli.update')}
             </button>
@@ -487,10 +488,10 @@ function CliDiagnostics() {
           return (
             <div
               key={c.path}
-              className={`py-2.5 px-3 rounded-lg transition-smooth
+              className={`py-2.5 px-3 rounded-lg transition-smooth border
                 ${active
-                  ? 'bg-accent/5 border border-accent/20'
-                  : 'bg-bg-secondary border border-transparent'
+                  ? 'border-accent/20 bg-accent/5'
+                  : 'border-border-subtle'
                 }`}
             >
               <div className="flex items-center justify-between">
@@ -527,7 +528,8 @@ function CliDiagnostics() {
                   <button
                     onClick={() => handlePin(c.path)}
                     className="py-1 px-2.5 text-xs font-medium rounded-md
-                      bg-accent text-text-inverse hover:bg-accent-hover transition-smooth"
+                      border border-border-subtle text-text-muted
+                      hover:bg-bg-secondary hover:text-text-primary transition-smooth"
                   >
                     {t('cli.use')}
                   </button>
