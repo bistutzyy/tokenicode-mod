@@ -6,6 +6,32 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **CLI 环境管理面板** — Settings → CLI 管理新增完整的 CLI 诊断与管理功能：
+  - 自动扫描所有 CLI 安装，按来源分层显示（官方 / 系统 / 自部署 / 版本管理器）
+  - 选择使用哪个 CLI（Pin/Unpin），下次会话优先使用选定版本
+  - 注入 PATH — 一键将 CLI 目录写入 shell 配置，终端直接可用
+  - 删除指定 CLI（官方版本受保护不可删）
+  - 版本号、native 标记、问题诊断（broken symlink / shebang 无效等）
+
+### Changed
+
+- **CLI 发现优先级重构** — 从旧的跨目录扫描改为逐目录 Tier 评估：
+  - 优先级：Official → System → AppLocal → VersionManager → Dynamic
+  - 子进程调用加 3 秒超时保护
+  - 常量去重
+- **CLI 更新路径修正** — 检测当前 CLI 来源，Official/System 走 native update，AppLocal 走 npm
+- **CLI 安装预清理** — 重装前自动清理 app-local 旧安装
+
+### Refactored
+
+- 新增 `commands/cli_resolver.rs` 模块，从 lib.rs 提取 CLI 发现/诊断/清理/Pin 逻辑
+
+---
+
 ## [0.9.9] - 2026-04-04
 
 ### Fixed
