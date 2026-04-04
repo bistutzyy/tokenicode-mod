@@ -100,8 +100,23 @@ function App() {
 
   const t = useT();
 
-  // Auto-check for updates on startup
+  // Auto-check for app updates on startup
   useAutoUpdateCheck();
+
+  // CLI update detection: check on startup + poll every 30 minutes
+  useEffect(() => {
+    const checkCliUpdate = () => {
+      bridge.checkCliUpdate().then((result) => {
+        useSettingsStore.setState({
+          cliUpdateAvailable: result.update_available,
+          cliLatestVersion: result.latest ?? '',
+        });
+      }).catch(() => {}); // silently ignore
+    };
+    checkCliUpdate();
+    const interval = setInterval(checkCliUpdate, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Confirm before closing the window (red X / Cmd+Q)
   const closePendingRef = useRef(false);

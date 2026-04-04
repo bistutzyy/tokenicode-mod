@@ -4897,6 +4897,146 @@ async fn install_cli_via_npm(app: &AppHandle, china: bool) -> Result<(), String>
     Err(last_err)
 }
 
+/// Update the Claude CLI to the latest version via npm.
+/// Unlike install_claude_cli, this does NOT skip when CLI already exists —
+/// it always runs `npm install -g @anthropic-ai/claude-code@latest`.
+#[tauri::command]
+async fn update_claude_cli() -> Result<String, String> {
+    // Find npm
+    let npm_path = if let Some(local_bin) = get_local_node_bin() {
+        #[cfg(target_os = "windows")]
+        let npm = local_bin.join("npm.cmd");
+        #[cfg(not(target_os = "windows"))]
+        let npm = local_bin.join("npm");
+        npm.to_string_lossy().to_string()
+    } else {
+        #[cfg(target_os = "windows")]
+        let npm = "npm.cmd".to_string();
+        #[cfg(not(target_os = "windows"))]
+        let npm = "npm".to_string();
+        npm
+    };
+
+    let enriched_path = build_enriched_path();
+    let china = is_china_network().await;
+    let registry = if china {
+        "https://registry.npmmirror.com"
+    } else {
+        "https://registry.npmjs.org"
+    };
+
+    // Use --prefix to install into our controlled directory (same as install_claude_cli)
+    let prefix_dir = npm_global_dir()?;
+    std::fs::create_dir_all(&prefix_dir)
+        .map_err(|e| format!("Failed to create npm prefix dir: {e}"))?;
+    let cache_dir = prefix_dir.join(".cache");
+    std::fs::create_dir_all(&cache_dir).ok();
+
+    let args: Vec<String> = vec![
+        "install".to_string(),
+        "-g".to_string(),
+        "@anthropic-ai/claude-code@latest".to_string(),
+        format!("--registry={}", registry),
+        format!("--prefix={}", prefix_dir.display()),
+        format!("--cache={}", cache_dir.display()),
+    ];
+    let args_str: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+
+    eprintln!("[update_claude_cli] running: {} {}", npm_path, args_str.join(" "));
+
+    #[cfg(target_os = "windows")]
+    let result = {
+        let mut cmd = Command::new("cmd");
+        cmd.arg("/C").arg(&npm_path);
+        cmd.args(&args_str);
+        cmd.env("PATH", &enriched_path)
+            .stdin(Stdio::null())
+            .creation_flags(0x08000000);
+        tokio::time::timeout(std::time::Duration::from_secs(300), cmd.output()).await
+    };
+    #[cfg(not(target_os = "windows"))]
+    let result = {
+        let mut cmd = Command::new(&npm_path);
+        cmd.args(&args_str);
+        cmd.env("PATH", &enriched_path).stdin(Stdio::null());
+        tokio::time::timeout(std::time::Duration::from_secs(300), cmd.output()).await
+    };
+
+    match result {
+        Ok(Ok(output)) => {
+            if output.status.success() {
+                // Re-check version
+                let check = check_claude_cli().await.unwrap_or(CliStatus {
+                    installed: false, version: None,
+                    path: None, git_bash_missing: false,
+                });
+                let version = check.version.unwrap_or_else(|| "unknown".to_string());
+                eprintln!("[update_claude_cli] success: v{}", version);
+                Ok(version)
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                Err(format!("npm install failed: {}", stderr.chars().take(500).collect::<String>()))
+            }
+        }
+        Ok(Err(e)) => Err(format!("Failed to run npm: {e}")),
+        Err(_) => Err("npm install timed out (300s)".to_string()),
+    }
+}
+
+/// Check if a newer CLI version is available by querying npm registry.
+/// Returns (current_version, latest_version, update_available).
+#[derive(serde::Serialize)]
+struct CliUpdateCheck {
+    current: Option<String>,
+    latest: Option<String>,
+    update_available: bool,
+}
+
+#[tauri::command]
+async fn check_cli_update() -> Result<CliUpdateCheck, String> {
+    // Get current version
+    let cli = check_claude_cli().await.ok();
+    let current = cli.as_ref().and_then(|c| c.version.clone());
+
+    // Get latest from GCS (fastest, same source as sync.sh)
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .unwrap_or_default();
+
+    let latest = match client
+        .get("https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/latest")
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            resp.text().await.ok().map(|s| s.trim().to_string())
+        }
+        _ => {
+            // Fallback: npm registry
+            match client
+                .get("https://registry.npmjs.org/@anthropic-ai/claude-code/latest")
+                .header("Accept", "application/json")
+                .send()
+                .await
+            {
+                Ok(resp) => {
+                    let json: serde_json::Value = resp.json().await.unwrap_or_default();
+                    json.get("version").and_then(|v| v.as_str()).map(String::from)
+                }
+                Err(_) => None,
+            }
+        }
+    };
+
+    let update_available = match (&current, &latest) {
+        (Some(cur), Some(lat)) => cur.trim() != lat.trim() && lat.trim() > cur.trim(),
+        _ => false,
+    };
+
+    Ok(CliUpdateCheck { current, latest, update_available })
+}
+
 /// Install the Claude CLI via npm with network-aware mirror selection:
 /// 0. Detect network environment (China vs Global)
 /// 1. (Windows) Ensure git-bash is available — auto-install PortableGit if missing
@@ -6347,6 +6487,8 @@ pub fn run() {
             run_claude_command,
             check_claude_cli,
             install_claude_cli,
+            update_claude_cli,
+            check_cli_update,
             check_node_env,
             install_node_env,
             start_claude_login,

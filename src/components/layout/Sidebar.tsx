@@ -24,6 +24,7 @@ export function Sidebar() {
   const toggleSidebar = useSettingsStore((s) => s.toggleSidebar);
   const toggleSettings = useSettingsStore((s) => s.toggleSettings);
   const updateAvailable = useSettingsStore((s) => s.updateAvailable);
+  const cliUpdateAvailable = useSettingsStore((s) => s.cliUpdateAvailable);
   const sessionMeta = useActiveTab((t) => t.sessionMeta);
   const sessionStatus = useActiveTab((t) => t.sessionStatus);
   const t = useT();
@@ -143,9 +144,9 @@ export function Sidebar() {
               <circle cx="8" cy="8" r="2" />
               <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" />
             </svg>
-            {updateAvailable && (
-              <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full
-                bg-green-500 border-[1.5px] border-bg-sidebar" />
+            {(updateAvailable || cliUpdateAvailable) && (
+              <span className={`absolute -top-1 -right-1.5 w-2 h-2 rounded-full
+                border-[1.5px] border-bg-sidebar ${cliUpdateAvailable ? 'bg-red-500' : 'bg-green-500'}`} />
             )}
           </div>
           {t('settings.title')}

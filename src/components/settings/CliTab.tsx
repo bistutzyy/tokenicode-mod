@@ -4,8 +4,9 @@ import { useT } from '../../lib/i18n';
 import { APP_NAME } from '../../lib/edition';
 import { stripAnsi } from '../../lib/strip-ansi';
 import { isPermissionError, isNetworkError } from './settingsUtils';
+import { useSettingsStore } from '../../stores/settingsStore';
 
-type CliCheckStatus = 'idle' | 'checking' | 'found' | 'not_found' | 'installing' | 'installed' | 'install_failed';
+type CliCheckStatus = 'idle' | 'checking' | 'found' | 'not_found' | 'installing' | 'installed' | 'install_failed' | 'updating' | 'updated' | 'update_failed';
 
 export function CliTab() {
   const t = useT();
@@ -100,6 +101,19 @@ export function CliTab() {
     }
   }, []);
 
+  const handleUpdate = useCallback(async () => {
+    setStatus('updating');
+    setErrorMsg('');
+    try {
+      const newVersion = await bridge.updateClaudeCli();
+      setCliVersion(newVersion);
+      setStatus('updated');
+    } catch (e) {
+      setErrorMsg(stripAnsi(String(e)));
+      setStatus('update_failed');
+    }
+  }, []);
+
   const handleRestart = useCallback(async () => {
     const { relaunch } = await import('@tauri-apps/plugin-process');
     await relaunch();
@@ -122,6 +136,15 @@ export function CliTab() {
           </span>
           <p className="text-xs text-text-tertiary truncate" title={cliPath}>
             {cliPath}
+          </p>
+        </div>
+      )}
+
+      {/* CLI update available */}
+      {useSettingsStore.getState().cliUpdateAvailable && (status === 'found' || status === 'idle') && (
+        <div className="py-2 px-3 rounded-lg bg-accent/10">
+          <p className="text-[13px] text-accent font-medium">
+            {t('cli.update')} — v{useSettingsStore.getState().cliLatestVersion} {t('update.available') || 'available'}
           </p>
         </div>
       )}
@@ -149,8 +172,17 @@ export function CliTab() {
       )}
 
       {/* Action buttons */}
-      {(status === 'idle' || status === 'found' || status === 'not_found') && (
+      {(status === 'idle' || status === 'found' || status === 'not_found' || status === 'update_failed') && (
         <div className="flex gap-3">
+          {status !== 'not_found' && (
+            <button
+              onClick={handleUpdate}
+              className="flex-1 py-2 text-[13px] font-medium rounded-lg
+                bg-accent text-text-inverse hover:bg-accent-hover transition-smooth"
+            >
+              {t('cli.update')}
+            </button>
+          )}
           <button
             onClick={handleCheck}
             className="flex-1 py-2 text-[13px] font-medium rounded-lg
@@ -176,6 +208,35 @@ export function CliTab() {
           >
             {status === 'not_found' ? t('cli.install') : t('cli.reinstall')}
           </button>
+        </div>
+      )}
+
+      {status === 'updating' && (
+        <div className="flex items-center justify-center gap-2 py-2">
+          <div className="w-4 h-4 border-2 border-accent/30
+            border-t-accent rounded-full animate-spin" />
+          <span className="text-[13px] text-text-muted">{t('cli.updating')}</span>
+        </div>
+      )}
+
+      {status === 'updated' && (
+        <div className="py-2 text-center space-y-3">
+          <span className="text-[13px] text-green-500 font-medium">
+            ✓ {t('cli.updateDone')} {cliVersion && `v${cliVersion}`}
+          </span>
+          <button
+            onClick={handleRestart}
+            className="w-full py-2 text-[13px] font-medium rounded-lg
+              bg-accent text-text-inverse hover:bg-accent-hover transition-smooth"
+          >
+            {t('cli.restart')}
+          </button>
+        </div>
+      )}
+
+      {status === 'update_failed' && errorMsg && (
+        <div className="py-2 px-3 rounded-lg bg-red-500/10">
+          <p className="text-[13px] text-red-500 truncate" title={errorMsg}>{errorMsg}</p>
         </div>
       )}
 

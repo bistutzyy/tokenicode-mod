@@ -599,6 +599,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'cli.reinstallHint': '点击重新安装以修复',
     'cli.confirmReinstall': '确定要重新安装 CLI 吗？这将重新下载并替换当前的 CLI 二进制文件。',
     'cli.restart': '重启应用以生效',
+    'cli.update': '更新 CLI',
+    'cli.updating': '更新中...',
+    'cli.updateDone': '更新成功',
 
     // Update
     'update.check': '检查更新',
@@ -1264,6 +1267,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'cli.reinstallHint': 'Click reinstall to fix',
     'cli.confirmReinstall': 'Are you sure you want to reinstall the CLI? This will re-download and replace the current CLI binary.',
     'cli.restart': 'Restart app to apply',
+    'cli.update': 'Update CLI',
+    'cli.updating': 'Updating...',
+    'cli.updateDone': 'Update complete',
 
     // Update
     'update.check': 'Check for Updates',

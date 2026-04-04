@@ -51,18 +51,18 @@ export function ModelSelector({ disabled = false }: { disabled?: boolean }) {
       return MODEL_OPTIONS.map((m) => ({ id: m.id, label: m.label, short: m.short, mapped: false, isExtra: false }));
     }
 
-    // Official models with tier mapping
-    const seen = new Set<string>();
+    // Official models with tier mapping.
+    // When multiple Claude models map to the same provider model (e.g. Opus and Opus 1M
+    // both map to "mimo-v2-pro"), keep both entries with their original labels so the user
+    // can still distinguish them — the 1M variant uses a higher context window (#139 port).
     const official = MODEL_OPTIONS.map((m) => {
       const tier = TIER_MAP[m.id];
       const mapping = activeProvider.modelMappings.find((mm) => mm.tier === tier);
       if (mapping?.providerModel) {
-        if (seen.has(mapping.providerModel)) return null;
-        seen.add(mapping.providerModel);
-        return { id: m.id, label: mapping.providerModel, short: mapping.providerModel, mapped: true, isExtra: false };
+        return { id: m.id, label: `${m.short} → ${mapping.providerModel}`, short: m.short, mapped: true, isExtra: false };
       }
       return { id: m.id, label: m.label, short: m.short, mapped: false, isExtra: false };
-    }).filter(Boolean) as DisplayOption[];
+    });
 
     // Extra models (non-tier mappings added by user)
     const extras: DisplayOption[] = activeProvider.modelMappings

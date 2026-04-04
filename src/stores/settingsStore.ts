@@ -56,6 +56,10 @@ interface SettingsState {
   thinkingLevel: ThinkingLevel;
   /** Whether a newer version is available (set by auto-check on startup) */
   updateAvailable: boolean;
+  /** Whether a newer CLI version is available */
+  cliUpdateAvailable: boolean;
+  /** Latest CLI version string (for display) */
+  cliLatestVersion: string;
   /** Version string of the available update */
   updateVersion: string;
   /** Whether the update has been downloaded and is ready for restart (transient, not persisted) */
@@ -135,6 +139,8 @@ export const useSettingsStore = create<SettingsState>()(
       thinkingLevel: 'medium' as ThinkingLevel,
       updateAvailable: false,
       updateVersion: '',
+      cliUpdateAvailable: false,
+      cliLatestVersion: '',
       updateDownloaded: false,
       lastSeenVersion: '',
       aiAvatarUrl: '',

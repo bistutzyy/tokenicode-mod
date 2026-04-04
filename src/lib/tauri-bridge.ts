@@ -332,6 +332,14 @@ export const bridge = {
   installClaudeCli: () =>
     invoke<void>('install_claude_cli'),
 
+  /** Update CLI to latest version via npm (bypasses "already installed" skip) */
+  updateClaudeCli: () =>
+    invoke<string>('update_claude_cli'),
+
+  /** Check if a newer CLI version is available */
+  checkCliUpdate: () =>
+    invoke<{ current: string | null; latest: string | null; update_available: boolean }>('check_cli_update'),
+
   checkNodeEnv: () =>
     invoke<NodeEnvStatus>('check_node_env'),
 
