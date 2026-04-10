@@ -19,6 +19,29 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.1',
+    date: '2026-04-09',
+    highlights: {
+      zh: ['修复输出偶尔卡住的问题', '同名文件夹不再混淆'],
+      en: ['Fix occasional output freeze', 'Same-name folders now distinguishable'],
+    },
+    categories: [
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            '流式输出偶尔卡死 — 新增定时兜底机制，长对话时输出不再停在某个字不动',
+            '不同路径的同名文件夹现在能正确区分 — 显示父级目录（如「A (桌面)」vs「A (坚果云)」）',
+          ],
+          en: [
+            'Streaming output freeze — added timer fallback so output never gets stuck mid-response',
+            'Same-name folders from different paths now show parent directory for disambiguation',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-04-05',
     highlights: {
