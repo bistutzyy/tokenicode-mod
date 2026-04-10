@@ -164,4 +164,8 @@ pub struct StartSessionParams {
     /// When not "bypassPermissions", enables --permission-prompt-tool stdio for structured
     /// permission requests via the SDK control protocol.
     pub permission_mode: Option<String>,
+    /// When true and resume_session_id is set, strip thinking blocks from the session JSONL
+    /// before resuming. This prevents "invalid thinking signature" 400 errors when switching
+    /// to a different model that can't verify the old model's cryptographic signatures.
+    pub model_switch: Option<bool>,
 }
