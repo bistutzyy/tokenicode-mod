@@ -6800,6 +6800,8 @@ pub fn run() {
             test_provider_connection,
             respond_permission,
             send_control_request,
+            commands::feedback::submit_feedback,
+            commands::feedback::feedback_is_configured,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

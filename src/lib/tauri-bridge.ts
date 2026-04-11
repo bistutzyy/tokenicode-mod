@@ -440,7 +440,35 @@ export const bridge = {
   /** Send a runtime interrupt command */
   interruptSession: (sessionId: string) =>
     invoke<void>('send_control_request', { sessionId, subtype: 'interrupt', payload: {} }),
+
+  /** Submit user feedback via Feishu webhook (self-built app). */
+  submitFeedback: (params: {
+    description: string;
+    screenshotBase64?: string;
+    metadata: FeedbackMetadata;
+  }) =>
+    invoke<void>('submit_feedback', {
+      description: params.description,
+      screenshotBase64: params.screenshotBase64 ?? null,
+      metadata: params.metadata,
+    }),
+
+  /** Check whether FEISHU_* env vars were baked in at build time. */
+  feedbackIsConfigured: () => invoke<boolean>('feedback_is_configured'),
 };
+
+/** Metadata collected alongside user feedback for server-side diagnostics. */
+export interface FeedbackMetadata {
+  app_name: string;
+  app_version: string;
+  os: string;
+  arch: string;
+  locale?: string;
+  provider_name?: string;
+  model?: string;
+  session_id?: string;
+  user_contact?: string;
+}
 
 // --- SDK Control Protocol Types ---
 
