@@ -751,37 +751,39 @@ export function InputBar() {
 
     setInputSync('');
 
-    // Silent restart: skip user message bubble (Code mode ExitPlanMode auto-recovery)
+    // Snapshot attachments before clearFiles wipes them
+    const userMsgAttachments = files.length > 0
+      ? files.map((f) => ({ name: f.name, path: f.path, isImage: f.isImage, preview: f.preview }))
+      : undefined;
+
+    clearFiles();
+
+    // Gate: queue follow-up messages while AI is actively processing (#142).
+    // IMPORTANT: when queueing, do NOT addMessage to messages[] — ChatPanel
+    // renders pendingUserMessages separately AFTER the partialText bubble so
+    // the queued items visually appear behind the streaming reply.
+    // The flush logic in useStreamProcessor will addMessage at send time.
+    const currentTabState = getActiveTabState();
+    const existingStdinId = currentTabState.sessionMeta.stdinId;
+    const currentStatus = currentTabState.sessionStatus;
+
+    if (existingStdinId && (currentStatus === 'running' || currentStatus === 'reconnecting')) {
+      useChatStore.getState().addPendingMessage(tabId, text);
+      return;
+    }
+
+    // Normal path: show user message immediately
     if (silentRestartRef.current) {
       silentRestartRef.current = false;
     } else {
-      // Add user message (show original text, not with prefix)
       addMessage(tabId, {
         id: generateMessageId(),
         role: 'user',
         type: 'text',
         content: rawInput.trim(),
         timestamp: Date.now(),
-        attachments: files.length > 0
-          ? files.map((f) => ({ name: f.name, path: f.path, isImage: f.isImage, preview: f.preview }))
-          : undefined,
+        attachments: userMsgAttachments,
       });
-    }
-
-    clearFiles();
-
-    // Gate: queue follow-up messages while AI is actively processing (#142).
-    // Previously only queued when an interaction card was pending, but direct stdin
-    // writes during streaming are unreliable — CLI may silently drop them.
-    // Now we always queue during running state; messages are flushed FIFO when the
-    // current turn completes (result event in useStreamProcessor).
-    const currentTabState = getActiveTabState();
-    const existingStdinId = currentTabState.sessionMeta.stdinId;
-    const currentStatus = currentTabState.sessionStatus;
-
-    if (existingStdinId && currentStatus === 'running') {
-      useChatStore.getState().addPendingMessage(tabId, text);
-      return;
     }
 
     const turnStartedAt = Date.now();

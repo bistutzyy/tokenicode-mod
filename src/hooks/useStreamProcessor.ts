@@ -1820,6 +1820,18 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
           const nextMsg = useChatStore.getState().shiftPendingMessage(tabId);
           const flushStdinId = drainTab?.sessionMeta.stdinId;
           if (nextMsg && flushStdinId) {
+            // Add user message to UI now — InputBar deliberately did NOT
+            // addMessage when enqueueing, because ChatPanel renders pending
+            // messages after the streaming bubble. When we drain a pending
+            // message and actually send it, it becomes a "real" turn and
+            // belongs in messages[] just like any other user input.
+            addMessage({
+              id: generateMessageId(),
+              role: 'user',
+              type: 'text',
+              content: nextMsg,
+              timestamp: Date.now(),
+            });
             const nextTurnStartedAt = Date.now();
             setSessionStatus('running');
             setSessionMeta({
