@@ -1055,6 +1055,188 @@ fn resolve_provider_env(
     Ok((env, keys_to_remove, extra_args))
 }
 
+/// Find the JSONL file for a given session UUID by scanning ~/.claude/projects/*/.
+/// Returns the path if found, None otherwise.
+/// Validates that session_id looks like a UUID to prevent path traversal.
+fn find_session_jsonl(session_id: &str) -> Option<std::path::PathBuf> {
+    // Reject non-UUID session IDs to prevent path traversal (e.g. "../../../etc/passwd")
+    if uuid::Uuid::parse_str(session_id).is_err() {
+        eprintln!("[TOKENICODE] find_session_jsonl: rejecting non-UUID session_id: {}", session_id);
+        return None;
+    }
+
+    let home = dirs::home_dir()?;
+    let claude_projects = home.join(".claude").join("projects");
+    if !claude_projects.exists() {
+        return None;
+    }
+
+    let target_filename = format!("{}.jsonl", session_id);
+    if let Ok(entries) = std::fs::read_dir(&claude_projects) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                let candidate = entry.path().join(&target_filename);
+                if candidate.exists() {
+                    return Some(candidate);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Strip thinking and redacted_thinking blocks from a session's JSONL file.
+/// This is used before resuming a session with a different model, because the
+/// new model cannot verify the old model's cryptographic thinking signatures
+/// and will reject the request with a 400 error.
+///
+/// Returns Ok(blocks_stripped) on success, or Err with a description on failure.
+/// The caller should NOT block the session resume on failure — let the auto-retry
+/// path handle it as a safety net.
+fn strip_thinking_blocks_from_session(session_id: &str) -> Result<usize, String> {
+    use std::io::{BufRead, Write};
+
+    let jsonl_path = find_session_jsonl(session_id)
+        .ok_or_else(|| format!("Session JSONL not found for id: {}", session_id))?;
+
+    eprintln!(
+        "[TOKENICODE] strip_thinking_blocks: processing {:?}",
+        jsonl_path
+    );
+
+    // Read all lines
+    let file = std::fs::File::open(&jsonl_path)
+        .map_err(|e| format!("Failed to open JSONL: {}", e))?;
+    let reader = std::io::BufReader::new(file);
+    let lines: Vec<String> = reader
+        .lines()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Failed to read JSONL: {}", e))?;
+
+    let mut total_stripped = 0usize;
+    let mut modified_lines = Vec::with_capacity(lines.len());
+
+    for line in lines {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            modified_lines.push(line);
+            continue;
+        }
+
+        match serde_json::from_str::<serde_json::Value>(trimmed) {
+            Ok(mut json_line) => {
+                // Look for assistant messages with content arrays.
+                // Format: {"type":"assistant","message":{"role":"assistant","content":[...]}}
+                // Thinking blocks only appear at this level — tool_result content arrays
+                // contain tool output, not model thinking.
+                if let Some(stripped) = strip_thinking_from_value(&mut json_line) {
+                    total_stripped += stripped;
+                }
+                modified_lines.push(serde_json::to_string(&json_line).unwrap_or(line));
+            }
+            Err(_) => {
+                // Not valid JSON — keep the line as-is
+                modified_lines.push(line);
+            }
+        }
+    }
+
+    if total_stripped > 0 {
+        // Backup the original file before overwriting
+        let backup_path = jsonl_path.with_extension("jsonl.bak");
+        if let Err(e) = std::fs::copy(&jsonl_path, &backup_path) {
+            eprintln!(
+                "[TOKENICODE] strip_thinking_blocks: backup failed ({}) — proceeding anyway",
+                e
+            );
+        }
+
+        // Write the cleaned JSONL via temp file + platform-specific replace.
+        let tmp_path = jsonl_path.with_extension("jsonl.tmp");
+        let mut tmp_file = std::fs::File::create(&tmp_path)
+            .map_err(|e| format!("Failed to create temp file: {}", e))?;
+        for line in &modified_lines {
+            writeln!(tmp_file, "{}", line)
+                .map_err(|e| format!("Failed to write temp file: {}", e))?;
+        }
+        tmp_file
+            .flush()
+            .map_err(|e| format!("Failed to flush temp file: {}", e))?;
+        // Drop the file handle before rename — on Windows, an open handle
+        // can prevent rename from succeeding.
+        drop(tmp_file);
+
+        // On Unix, rename() atomically replaces the target — no data loss window.
+        // On Windows, rename() cannot overwrite an existing file, so we use a
+        // two-step approach with rollback from backup on failure.
+        #[cfg(not(target_os = "windows"))]
+        {
+            std::fs::rename(&tmp_path, &jsonl_path)
+                .map_err(|e| format!("Failed to rename temp file: {}", e))?;
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let replace_result = (|| -> std::io::Result<()> {
+                // Try std::fs::rename first — works if target doesn't exist
+                if std::fs::rename(&tmp_path, &jsonl_path).is_ok() {
+                    return Ok(());
+                }
+                // Fallback: backup old file, rename new, rollback on failure
+                let win_backup = jsonl_path.with_extension("jsonl.wbak");
+                let _ = std::fs::remove_file(&win_backup);
+                std::fs::rename(&jsonl_path, &win_backup)?;
+                if let Err(e) = std::fs::rename(&tmp_path, &jsonl_path) {
+                    // Rollback: restore original file
+                    let _ = std::fs::rename(&win_backup, &jsonl_path);
+                    return Err(e);
+                }
+                let _ = std::fs::remove_file(&win_backup);
+                Ok(())
+            })();
+            replace_result.map_err(|e| format!("Failed to replace JSONL on Windows: {}", e))?;
+        }
+
+        eprintln!(
+            "[TOKENICODE] strip_thinking_blocks: stripped {} thinking blocks from {:?}",
+            total_stripped, jsonl_path
+        );
+    } else {
+        eprintln!(
+            "[TOKENICODE] strip_thinking_blocks: no thinking blocks found in {:?}",
+            jsonl_path
+        );
+    }
+
+    Ok(total_stripped)
+}
+
+/// Strip thinking/redacted_thinking content blocks from a JSON value's message.content array.
+/// Returns the number of blocks stripped, or None if nothing was modified.
+fn strip_thinking_from_value(value: &mut serde_json::Value) -> Option<usize> {
+    let mut stripped = 0usize;
+
+    // Look for message.content array (assistant messages)
+    if let Some(message) = value.get_mut("message") {
+        if let Some(content) = message.get_mut("content") {
+            if let Some(arr) = content.as_array_mut() {
+                let before_len = arr.len();
+                arr.retain(|item| {
+                    item.get("type")
+                        .and_then(|t| t.as_str())
+                        .map_or(true, |t| t != "thinking" && t != "redacted_thinking")
+                });
+                stripped += before_len - arr.len();
+            }
+        }
+    }
+
+    if stripped > 0 {
+        Some(stripped)
+    } else {
+        None
+    }
+}
+
 #[tauri::command]
 async fn start_claude_session(
     app: AppHandle,
@@ -1085,6 +1267,21 @@ async fn start_claude_session(
         // overhead as each must initialize before the CLI accepts input.
         "--strict-mcp-config".to_string(),
     ];
+
+    // Model switch: strip thinking blocks from the session JSONL before resuming.
+    // When switching models, the old model's cryptographic thinking signatures in the
+    // JSONL cause the new model to reject the request (400 error). Stripping them
+    // preserves the conversation text while removing the invalid signatures.
+    // This is best-effort: failure is logged but does NOT block the resume attempt.
+    // The auto-retry path in useStreamProcessor.ts will catch any remaining errors.
+    if params.model_switch.unwrap_or(false) {
+        if let Some(ref resume_id) = params.resume_session_id {
+            match strip_thinking_blocks_from_session(resume_id) {
+                Ok(n) => eprintln!("[TOKENICODE] model_switch: stripped {} thinking blocks before resume", n),
+                Err(e) => eprintln!("[TOKENICODE] model_switch: thinking-block strip failed ({}), attempting resume anyway", e),
+            }
+        }
+    }
 
     // Resume an existing CLI session if requested
     if let Some(ref resume_id) = params.resume_session_id {
@@ -6656,5 +6853,93 @@ mod decode_tests {
         println!("Result: {}", result);
         // Should decode to "/Users/tinyzhuang/Desktop/jd 设计"
         assert_eq!(result, "/Users/tinyzhuang/Desktop/jd 设计");
+    }
+}
+
+#[cfg(test)]
+mod strip_thinking_tests {
+    use super::strip_thinking_from_value;
+    use serde_json::json;
+
+    #[test]
+    fn test_strip_thinking_removes_thinking_blocks() {
+        let mut value = json!({
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {"type": "thinking", "thinking": "private thoughts"},
+                    {"type": "text", "text": "Hello!"},
+                    {"type": "redacted_thinking", "data": "opaque"},
+                ]
+            }
+        });
+        let stripped = strip_thinking_from_value(&mut value);
+        assert_eq!(stripped, Some(2));
+        let content = value["message"]["content"].as_array().unwrap();
+        assert_eq!(content.len(), 1);
+        assert_eq!(content[0]["type"], "text");
+    }
+
+    #[test]
+    fn test_strip_thinking_preserves_other_types() {
+        let mut value = json!({
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {"type": "text", "text": "Hello!"},
+                    {"type": "tool_use", "id": "t1", "name": "bash"},
+                    {"type": "tool_result", "tool_use_id": "t1", "content": "output"},
+                ]
+            }
+        });
+        let stripped = strip_thinking_from_value(&mut value);
+        assert_eq!(stripped, None);
+        assert_eq!(value["message"]["content"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_strip_thinking_user_message_unchanged() {
+        let mut value = json!({
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": "What is 2+2?"
+            }
+        });
+        let stripped = strip_thinking_from_value(&mut value);
+        assert_eq!(stripped, None);
+    }
+
+    #[test]
+    fn test_strip_thinking_empty_content() {
+        let mut value = json!({
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "content": []
+            }
+        });
+        let stripped = strip_thinking_from_value(&mut value);
+        assert_eq!(stripped, None);
+    }
+
+    #[test]
+    fn test_strip_thinking_only_thinking_blocks() {
+        // Edge case: all blocks are thinking — result is empty content array
+        let mut value = json!({
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "content": [
+                    {"type": "thinking", "thinking": "hmm"},
+                    {"type": "redacted_thinking", "data": "abc"},
+                ]
+            }
+        });
+        let stripped = strip_thinking_from_value(&mut value);
+        assert_eq!(stripped, Some(2));
+        assert_eq!(value["message"]["content"].as_array().unwrap().len(), 0);
     }
 }

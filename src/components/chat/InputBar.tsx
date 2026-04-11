@@ -863,6 +863,18 @@ export function InputBar() {
           // If the resume fails due to thinking signature mismatch, the
           // stream error handler will auto-retry without resume.
           setSessionMeta(tabId, { stdinId: undefined, envFingerprint: undefined, providerSwitched: true, providerSwitchPendingText: text });
+          // Clean thinking blocks from history to avoid signature mismatch on resume.
+          // Provider change likely routes to a different backend that can't verify
+          // the old model's thinking signatures.
+          useChatStore.setState((state) => {
+            const tab = state.tabs.get(tabId);
+            if (!tab) return {};
+            const cleanedMessages = tab.messages.filter(m => m.type !== 'thinking');
+            if (cleanedMessages.length === tab.messages.length) return {};
+            const newTabs = new Map(state.tabs);
+            newTabs.set(tabId, { ...tab, messages: cleanedMessages });
+            return { tabs: newTabs, sessionCache: newTabs };
+          });
           stdinId = undefined;
         } else {
           // Check if model changed since this process was spawned.
@@ -1064,7 +1076,8 @@ export function InputBar() {
         // Read sessionMode from store (not closure) so plan-approve → code
         // mode switch is visible even when called via rAF.
         const liveSessionMode = useSettingsStore.getState().sessionMode;
-        console.log('[TOKENICODE:session] starting session', { cwd, stdinId: preGeneratedId, mode: liveSessionMode, provider: useProviderStore.getState().activeProviderId });
+        const didSwitchModel = getActiveTabState().sessionMeta.modelSwitched || getActiveTabState().sessionMeta.providerSwitched;
+        console.log('[TOKENICODE:session] starting session', { cwd, stdinId: preGeneratedId, mode: liveSessionMode, provider: useProviderStore.getState().activeProviderId, modelSwitch: !!didSwitchModel, resumeSessionId: existingSessionId });
         const session = await bridge.startSession({
           prompt: text,
           cwd,
@@ -1075,11 +1088,22 @@ export function InputBar() {
           session_mode: (liveSessionMode === 'ask' || liveSessionMode === 'plan') ? liveSessionMode : undefined,
           provider_id: useProviderStore.getState().activeProviderId || undefined,
           permission_mode: mapSessionModeToPermissionMode(liveSessionMode),
+          model_switch: didSwitchModel ? true : undefined,
         });
         console.log('[TOKENICODE:session] started successfully', { sessionId: session.session_id, pid: session.pid, cli: session.cli_path });
 
         // Store both: session_id for tracking, stdinId (preGeneratedId) for stdin communication
-        setSessionMeta(tabId, { sessionId: session.session_id, stdinId: preGeneratedId, envFingerprint: envFingerprint(), spawnedModel: resolveModelForProvider(selectedModel) });
+        // Also clear model/provider switch flags — the switch has been handled by this spawn.
+        setSessionMeta(tabId, {
+          sessionId: session.session_id,
+          stdinId: preGeneratedId,
+          envFingerprint: envFingerprint(),
+          spawnedModel: resolveModelForProvider(selectedModel),
+          modelSwitched: false,
+          providerSwitched: false,
+          modelSwitchPendingText: undefined,
+          providerSwitchPendingText: undefined,
+        });
         // Note: stdinId → tabId mapping already registered before listener setup (TK-329)
 
         // Track the session and refresh conversation list
