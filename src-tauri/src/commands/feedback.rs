@@ -180,7 +180,7 @@ fn build_card(
 
     let mut meta_lines: Vec<String> = vec![
         format!("**版本**: {}", metadata.app_version),
-        format!("**系统**: {} {}", metadata.os, metadata.arch),
+        format!("**系统**: {} {}", std::env::consts::OS, std::env::consts::ARCH),
     ];
     if let Some(locale) = &metadata.locale {
         meta_lines.push(format!("**语言**: {}", locale));
