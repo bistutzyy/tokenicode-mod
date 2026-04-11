@@ -59,7 +59,10 @@ export function ModelSelector({ disabled = false }: { disabled?: boolean }) {
       const tier = TIER_MAP[m.id];
       const mapping = activeProvider.modelMappings.find((mm) => mm.tier === tier);
       if (mapping?.providerModel) {
-        return { id: m.id, label: `${m.short} → ${mapping.providerModel}`, short: m.short, mapped: true, isExtra: false };
+        // Show only the provider model name — the actual backend being called.
+        // The Claude-side tier prefix ("Opus 4.6 →") is noise since the mapping
+        // is user-configured and the provider name is what matters (#74).
+        return { id: m.id, label: mapping.providerModel, short: mapping.providerModel, mapped: true, isExtra: false };
       }
       return { id: m.id, label: m.label, short: m.short, mapped: false, isExtra: false };
     });
