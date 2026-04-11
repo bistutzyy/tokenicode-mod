@@ -5,6 +5,7 @@ import { useT } from '../../lib/i18n';
 import { AiAvatar } from '../shared/AiAvatar';
 import { UserAvatar } from '../shared/UserAvatar';
 import { AvatarCropModal } from './AvatarCropModal';
+import { FeedbackSection } from './FeedbackSection';
 
 const TIER_MAP: Record<string, string> = {
   'claude-opus-4-6': 'opus',
