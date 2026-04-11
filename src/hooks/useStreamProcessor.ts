@@ -1084,6 +1084,35 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
         // Diagnostic: log tool_use starts for debugging plan mode flow
         if (evt.type === 'content_block_start' && evt.content_block?.type === 'tool_use') {
           console.log('[TOKENICODE:stream] tool_use start:', evt.content_block.name);
+
+          // UX: immediately surface that a tool is running. Without this, the
+          // user sees no feedback during long tool input streams (e.g. Write
+          // streaming a 2000-word article takes ~50s, during which the
+          // ActivityIndicator stays in 'thinking' phase and no card appears).
+          // We add a placeholder tool_use card keyed by the content_block.id;
+          // when case 'assistant' arrives with the full message, addMessage's
+          // id-based dedup will merge the actual toolInput into this card.
+          // Skip ExitPlanMode (handled by plan_review path) and Task/Agent/
+          // TaskCreate/SendMessage (handled by agent registration below).
+          const toolName = evt.content_block.name;
+          if (toolName !== 'ExitPlanMode'
+              && toolName !== 'Task'
+              && toolName !== 'Agent'
+              && toolName !== 'TaskCreate'
+              && toolName !== 'SendMessage') {
+            setActivityStatus({ phase: 'tool', toolName });
+            agentActions.updatePhase(agentId, 'tool', toolName);
+            addMessage({
+              id: evt.content_block.id || `tool_placeholder_${Date.now()}`,
+              role: 'assistant',
+              type: 'tool_use',
+              content: '',
+              toolName,
+              toolInput: {},
+              subAgentDepth: agentDepth,
+              timestamp: Date.now(),
+            });
+          }
         }
 
         if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
