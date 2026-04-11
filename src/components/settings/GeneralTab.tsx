@@ -313,6 +313,9 @@ export function GeneralTab() {
             ))}
           </div>
         </div>
+
+        {/* Feedback */}
+        <FeedbackSection />
       </div>
     </div>
   );
