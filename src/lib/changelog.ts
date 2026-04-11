@@ -23,12 +23,14 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-04-11',
     highlights: {
       zh: [
+        '新增用户反馈通道，设置里一键提交',
         '流式输出卡死大修 — 孤儿缓冲、停滞看门狗、打断保留一整套',
         '切换模型不再 400 报错',
         '/compact 在后台 tab 完成时不再卡住转圈',
         '工具调用有运行中动画，消息可排队发送',
       ],
       en: [
+        'New in-app feedback channel in Settings',
         'Stream stuck fixes — orphan buffer, stall watchdog, interrupt preservation',
         'Model switching no longer hits 400 errors',
         '/compact no longer freezes when it completes on a background tab',
@@ -36,6 +38,17 @@ export const CHANGELOG: ChangelogEntry[] = [
       ],
     },
     categories: [
+      {
+        label: { zh: '新功能', en: 'New' },
+        items: {
+          zh: [
+            '提交反馈 — 设置里新增「反馈」tab，可以直接给开发者发问题或建议，支持粘贴截图，会自动带上应用版本、系统、Provider、Model 等诊断信息，无需打开 GitHub',
+          ],
+          en: [
+            'Submit Feedback — a new "Feedback" tab in Settings lets you send bug reports or suggestions directly to the developer, with screenshot paste support; app version, OS, provider, and model are attached automatically — no GitHub account needed',
+          ],
+        },
+      },
       {
         label: { zh: '修复', en: 'Fixed' },
         items: {
