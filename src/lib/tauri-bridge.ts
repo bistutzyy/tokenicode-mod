@@ -457,12 +457,11 @@ export const bridge = {
   feedbackIsConfigured: () => invoke<boolean>('feedback_is_configured'),
 };
 
-/** Metadata collected alongside user feedback for server-side diagnostics. */
+/** Metadata collected alongside user feedback for server-side diagnostics.
+ *  OS / arch are filled in by the Rust side from std::env::consts. */
 export interface FeedbackMetadata {
   app_name: string;
   app_version: string;
-  os: string;
-  arch: string;
   locale?: string;
   provider_name?: string;
   model?: string;
