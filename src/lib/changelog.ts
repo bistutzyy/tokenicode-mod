@@ -63,6 +63,7 @@ export const CHANGELOG: ChangelogEntry[] = [
             '从 Finder 拖文件到输入框会同时插入文件 chip 和原始文本路径 — 新增 drop 拦截',
             'Rewind 后事件偶尔路由到错误 tab — killProcess 现在会清理 stdin → tab 映射',
             '流式缓冲区对中文字符使用字节切片导致 panic，进而杀死整个 stdout 读取任务 — 改为安全的字符边界检查',
+            '"注入 PATH" 之前写的是错误的 marker 且反复点击会累积多个块（#79）— 现在会拒绝无效 CLI 候选（broken symlink / 空目录 / 非可执行文件），marker 正名为 `# Added by TOKENICODE`，每次注入前先剥离自己的历史块',
           ],
           en: [
             'Stream output occasionally stalled or dropped trailing characters — added orphan buffer queue + 3-second stall watchdog; flushes are no longer silently discarded when routing is unresolved',
@@ -75,6 +76,7 @@ export const CHANGELOG: ChangelogEntry[] = [
             'Finder file drag inserted both a file chip and a raw text path — added drop interception',
             'Events occasionally routed to the wrong tab after Rewind — killProcess now cleans up the stdin → tab mapping',
             'Stream buffer byte-slicing panicked on Chinese characters and killed the entire stdout reader task — now uses safe char-boundary checks',
+            '"Inject PATH" wrote a wrong marker and accumulated duplicate blocks on repeat clicks (#79) — now rejects invalid CLI candidates (broken symlinks, empty dirs, non-executable files), marker renamed to `# Added by TOKENICODE`, and each inject strips its own historical blocks first',
           ],
         },
       },
