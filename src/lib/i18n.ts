@@ -58,6 +58,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'msg.todo': '待办',
     'msg.webFetch': '网页',
     'msg.result': '结果',
+    'msg.toolRunning': '工具运行中…',
 
     // ConversationList
     'conv.search': '搜索任务...',
@@ -747,6 +748,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'msg.todo': 'Todo',
     'msg.webFetch': 'Web',
     'msg.result': 'Result',
+    'msg.toolRunning': 'Tool running…',
 
     // ConversationList
     'conv.search': 'Search tasks...',
