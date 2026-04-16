@@ -6,7 +6,7 @@ import { persist } from 'zustand/middleware';
 export type Theme = 'light' | 'dark' | 'system';
 export type ColorTheme = 'black' | 'blue' | 'orange' | 'green';
 export type SecondaryPanelTab = 'files' | 'skills';
-export type ModelId = 'claude-opus-4-6' | 'claude-opus-4-6-1m' | 'claude-sonnet-4-6' | 'claude-haiku-4-5-20251001';
+export type ModelId = 'claude-opus-4-7' | 'claude-sonnet-4-6' | 'claude-haiku-4-5-20251001';
 export type SessionMode = 'code' | 'ask' | 'plan' | 'bypass';
 /** CLI permission mode for the SDK control protocol */
 export type CliPermissionMode = 'acceptEdits' | 'default' | 'plan' | 'bypassPermissions';
@@ -26,8 +26,7 @@ export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'max';
 // --- Model options (display mapping) ---
 
 export const MODEL_OPTIONS: { id: ModelId; label: string; short: string }[] = [
-  { id: 'claude-opus-4-6', label: 'Claude Opus 4.6', short: 'Opus 4.6' },
-  { id: 'claude-opus-4-6-1m', label: 'Claude Opus 4.6 (1M)', short: 'Opus 4.6 1M' },
+  { id: 'claude-opus-4-7', label: 'Claude Opus 4.7', short: 'Opus 4.7' },
   { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', short: 'Sonnet 4.6' },
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', short: 'Haiku 4.5' },
 ];
@@ -241,7 +240,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'tokenicode-settings',
-      version: 6,
+      version: 7,
       migrate: (persistedState: unknown, version: number) => {
         const persisted = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -282,6 +281,16 @@ export const useSettingsStore = create<SettingsState>()(
           // Fix Haiku model ID: claude-haiku-4-5 → claude-haiku-4-5-20251001
           if (persisted.selectedModel === 'claude-haiku-4-5') {
             persisted.selectedModel = 'claude-haiku-4-5-20251001';
+          }
+        }
+        if (version < 7) {
+          // Anthropic released Opus 4.7 with 1M context by default — no separate [1m] variant
+          // needed. Migrate any 4.6 or 4.6-1m selections to the unified claude-opus-4-7.
+          if (
+            persisted.selectedModel === 'claude-opus-4-6' ||
+            persisted.selectedModel === 'claude-opus-4-6-1m'
+          ) {
+            persisted.selectedModel = 'claude-opus-4-7';
           }
         }
         return persisted;

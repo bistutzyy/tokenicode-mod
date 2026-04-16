@@ -250,10 +250,11 @@ function ActivityIndicator({ activityStatus, sessionMeta }: {
     : null;
 
   // Context pressure warning: threshold depends on model context window size
-  // 1M models (claude-opus-4-6-1m, mimo-v2-pro[1m]) → warn at 600K; others at 120K (60% of 200K)
+  // 1M models → warn at 600K; others at 120K (60% of 200K).
+  // Opus 4.7 ships with 1M context by default (no [1m] variant needed).
   const selectedModel = useSettingsStore((s) => s.selectedModel);
   const resolvedModel = resolveModelForProvider(selectedModel);
-  const is1MModel = resolvedModel.includes('[1m]') || selectedModel === 'claude-opus-4-6-1m';
+  const is1MModel = resolvedModel.includes('[1m]') || selectedModel === 'claude-opus-4-7';
   const contextWindow = is1MModel ? 1_000_000 : 200_000;
   const inputTokens = sessionMeta.inputTokens || 0;
   const contextWarning = inputTokens > contextWindow * 0.6;

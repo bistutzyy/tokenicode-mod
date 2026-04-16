@@ -16,7 +16,7 @@ export function resolveModelOrError(selectedModel: string): ModelResolution {
   const provider = useProviderStore.getState().getActive();
   if (!provider) return { ok: true, model: selectedModel };
 
-  // 1. Check direct model ID mapping first (e.g. 'claude-opus-4-6-1m' → 'glm-5-1m')
+  // 1. Check direct model ID mapping first (e.g. 'claude-opus-4-7' → 'glm-5')
   const directMapping = provider.modelMappings.find(
     (m) => m.tier === selectedModel && m.providerModel,
   );
@@ -26,8 +26,7 @@ export function resolveModelOrError(selectedModel: string): ModelResolution {
 
   // 2. Fall back to tier mapping
   const tierMap: Record<string, 'opus' | 'sonnet' | 'haiku'> = {
-    'claude-opus-4-6': 'opus',
-    'claude-opus-4-6-1m': 'opus',
+    'claude-opus-4-7': 'opus',
     'claude-sonnet-4-6': 'sonnet',
     'claude-haiku-4-5-20251001': 'haiku',
   };
@@ -48,10 +47,9 @@ export function resolveModelOrError(selectedModel: string): ModelResolution {
  * When a provider is active, looks up the model mapping for the selected tier.
  * Returns the original model ID if no mapping is configured (silent fallback).
  */
-/** Map internal model IDs to CLI-expected format */
-const CLI_MODEL_MAP: Partial<Record<ModelId, string>> = {
-  'claude-opus-4-6-1m': 'claude-opus-4-6[1m]',
-};
+/** Map internal model IDs to CLI-expected format.
+ *  Opus 4.7 ships with 1M context by default, so no [1m] suffix is needed. */
+const CLI_MODEL_MAP: Partial<Record<ModelId, string>> = {};
 
 export function resolveModelForProvider(selectedModel: string): string {
   const r = resolveModelOrError(selectedModel);
