@@ -6555,7 +6555,7 @@ async fn generate_session_title(
     let enriched_path = build_enriched_path();
 
     // Spawn a one-shot CLI process: -p for single prompt, --output-format json for structured output
-    let args = vec![
+    let mut args = vec![
         "-p".to_string(),
         prompt,
         "--model".to_string(),
