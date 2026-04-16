@@ -6586,6 +6586,14 @@ async fn generate_session_title(
     for k in &provider_keys_to_remove {
         cmd.env_remove(k);
     }
+    // Neutralize Claude Desktop host env vars (same fix as main session)
+    if provider_id.is_some() {
+        cmd.env_remove("CLAUDE_CODE_OAUTH_TOKEN");
+        cmd.env_remove("CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST");
+        cmd.env_remove("CLAUDE_CODE_ENTRYPOINT");
+        cmd.env("ANTHROPIC_AUTH_TOKEN", "");
+        cmd.env("CLAUDE_CODE_OAUTH_TOKEN", "");
+    }
 
     // Inject proxy env vars from login shell for GUI apps
     #[cfg(not(target_os = "windows"))]
