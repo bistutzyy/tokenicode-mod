@@ -6,6 +6,32 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [0.10.4] - 2026-04-17
+
+### Added
+
+- **Claude Opus 4.7 支持** — 默认 1M 上下文窗口，无需额外 beta flag
+  - `ModelId` 类型 / `MODEL_OPTIONS` 切换到 `claude-opus-4-7`，原 Opus 4.7 + 1M 变体合并为单项（Opus 4.7 本身就 1M）
+  - `tierMap` / `TIER_MAP` / Provider fallback / CLI_MODEL_MAP 同步更新（CLI_MODEL_MAP 清空）
+  - `ChatPanel` 的 `is1MModel` 识别裸 `claude-opus-4-7`，context 压力警告阈值修正
+  - persist version 6 → 7，老用户的 `claude-opus-4-6` / `-1m` 自动迁移到 `claude-opus-4-7`
+  - i18n placeholder + Rust `protocol.rs` 测试 fixture 同步
+  - 修复 legacy migration map 中的 stale `claude-opus-4-6` target
+
+### Changed
+
+- **滚动条改成自动隐藏** — 默认不可见，指针移入可滚动区域时才淡入；粗细 5px → 6px
+- **发布产物目录 `release-artifacts/` 整体 gitignore** — 不再追踪本地构建产物
+
+### Fixed
+
+- **标题生成命令 401 错误（三连修复）** — Claude Desktop 继承的 `CLAUDE_CODE_OAUTH_TOKEN` 通过环境污染第三方 Provider 的 title-gen：
+  - `--setting-sources` 显式指定 settings 来源
+  - title-gen 进程启动前清除 Claude Desktop OAuth env
+  - title-gen args 声明为 `mut` 以支持动态插入 flag
+
+---
+
 ## [0.10.1] - 2026-04-09
 
 ### Fixed

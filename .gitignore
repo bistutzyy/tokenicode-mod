@@ -33,6 +33,9 @@ src-tauri/target/
 *.deb
 *.rpm
 
+# Release artifacts (local build outputs — not tracked)
+release-artifacts/
+
 # Environment / secrets
 .env
 .env.*

@@ -19,6 +19,55 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.4',
+    date: '2026-04-17',
+    highlights: {
+      zh: [
+        'Opus 4.7 支持 — 默认 1M 上下文，老版本号自动迁移',
+        '滚动条改成自动隐藏 — 鼠标悬停时才浮现',
+      ],
+      en: [
+        'Opus 4.7 support — 1M context by default, legacy model IDs auto-migrated',
+        'Auto-hide scrollbars — fade in on hover, invisible otherwise',
+      ],
+    },
+    categories: [
+      {
+        label: { zh: '新功能', en: 'New' },
+        items: {
+          zh: [
+            'Claude Opus 4.7 模型支持 — 默认 1M 上下文窗口，无需额外 beta flag；老用户的 claude-opus-4-6 / -1m 设置会自动迁移到 claude-opus-4-7',
+          ],
+          en: [
+            'Claude Opus 4.7 model support — 1M context by default, no beta flag needed; legacy claude-opus-4-6 / -1m settings auto-migrate to claude-opus-4-7',
+          ],
+        },
+      },
+      {
+        label: { zh: '改进', en: 'Improved' },
+        items: {
+          zh: [
+            '滚动条改成自动隐藏 — 默认不可见，指针移入可滚动区域时才淡入；粗细从 5px 调到 6px，视觉更轻盈',
+          ],
+          en: [
+            'Auto-hide scrollbars — invisible by default, fade in on hover over scrollable regions; width tuned from 5px to 6px',
+          ],
+        },
+      },
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            '标题生成命令 401 错误 — Claude Desktop 注入的 OAuth token 通过环境变量污染第三方 Provider 的 title gen，三层防御：env 清除 + --setting-sources + args 可变声明',
+          ],
+          en: [
+            'Title-gen 401 errors — Claude Desktop\'s OAuth token polluted title-gen for third-party providers; fixed with env cleanup + --setting-sources + mutable args declaration',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.10.3',
     date: '2026-04-16',
     highlights: {

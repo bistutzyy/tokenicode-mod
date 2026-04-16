@@ -246,7 +246,7 @@ export const useSettingsStore = create<SettingsState>()(
         if (version === 0) {
           // Migrate legacy model IDs to current ones
           const legacyMap: Record<string, ModelId> = {
-            'claude-opus-4-0': 'claude-opus-4-6',
+            'claude-opus-4-0': 'claude-opus-4-7',
             'claude-sonnet-4-0': 'claude-sonnet-4-6',
             'claude-haiku-3-5': 'claude-haiku-4-5-20251001',
           };
