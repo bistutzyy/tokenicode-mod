@@ -54,4 +54,9 @@ latest-*.json
 # Internal / personal
 bug-reports/
 configs/
-.trellis/workspace/*/
+
+# AI workflow configs (local dev tooling, not project source)
+CLAUDE.md
+AGENTS.md
+.claude/
+.trellis/
