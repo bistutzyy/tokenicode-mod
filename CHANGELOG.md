@@ -6,6 +6,32 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### 修复
+
+- **会话生命周期和流式体验稳定性大修**（PR #103 by @suyuan2022）—— 把几类容易重现的会话/流式问题系统性修了一遍：
+  - **stdin 路由不再串台** — 切会话 / 切 Provider / 切 Model 时的清理统一走 lifecycle 入口（teardownSession / waitForStdinCleared），老的竞态窗口关上。
+  - **子进程隐性退出不再让界面卡住** — 之前 CLI 悄悄挂了但界面还转圈。加了幂等 `finalizeOnce` 保证状态收尾只跑一次。
+  - **Stop 之后再发消息继续走当前会话** — 之前会被错误地切到"新对话"，修了。
+  - **Thinking 计时器不再闪负数**。
+  - **API 重试 / 限流状态直接显示在对话活动区** —— 不再静默转圈，能看到背后发生了什么。
+  - **Provider 流式体验贴近原生 CLI** — 消除重复 thinking 块、stop/interrupt 后能恢复。
+
+### 新增
+
+- **能力边界加固** —— Markdown 图片 / HTML/SVG 预览 / 文件系统授权走后端路径校验。
+- **Opus 4.7 规范化** —— CLI 模型名统一到明确的 1M variant。
+- **`.test` CLI 测试框架** —— 自动化 E2E 测试基础设施，20 个 suite 覆盖 lifecycle / routing / provider / interrupt / streaming 多组回归场景。
+
+### 内部
+
+- 新增 sessionLifecycle / path_access / api-retry / elapsed-time / thinkingDedupe 模块
+- 10+ 条新单测 + 集成测试（ownership-guard / finalizeOnce / spawnConfigHash / stdin-route-regressions 等）
+- 全量 provider 能力检测 + OpenRouter 环境修正
+
+---
+
 ## [0.10.6] - 2026-04-18
 
 ### 新增
