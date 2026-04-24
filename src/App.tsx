@@ -8,7 +8,7 @@ import { SettingsPanel } from './components/settings/SettingsPanel';
 import { ImageLightbox } from './components/shared/ImageLightbox';
 import { ChangelogModal } from './components/shared/ChangelogModal';
 import { Toast } from './components/shared/Toast';
-import { useSettingsStore, mapSessionModeToPermissionMode } from './stores/settingsStore';
+import { useSettingsStore } from './stores/settingsStore';
 import { useProviderStore } from './stores/providerStore';
 import type { ColorTheme, Theme } from './stores/settingsStore';
 import { useFileStore } from './stores/fileStore';
@@ -17,7 +17,8 @@ import { useSessionStore } from './stores/sessionStore';
 import { APP_NAME, IS_ALPHA } from './lib/edition';
 import { useAgentStore } from './stores/agentStore';
 import { bridge, onFileChange } from './lib/tauri-bridge';
-import { inspectSessionForRecovery } from './lib/session-recovery';
+import { parseSessionMessages } from './lib/session-loader';
+import { hasRecoverableFrontendSession } from './lib/sessionLifecycle';
 import { useAutoUpdateCheck } from './hooks/useAutoUpdateCheck';
 import { useT } from './lib/i18n';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -119,170 +120,276 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Global stream watchdog + auto-recovery ──────────────────────
-  //
-  // Phase 0 + Phase 1 of the streaming-stall fix. Runs at the App level
-  // (not per-ChatPanel) so it covers background tabs whose ChatPanel is
-  // not mounted.
-  //
-  // Every 3 seconds it scans every tab in chatStore.tabs. For any tab
-  // where sessionStatus === 'running' and no stream event has arrived
-  // in the last STALL_THRESHOLD_MS, it enters the auto-recovery flow:
-  //
-  //   1. Transition the tab to 'reconnecting' (UI shows "重连中…")
-  //   2. killSession the stalled CLI process
-  //   3. Read the on-disk JSONL via inspectSessionForRecovery
-  //   4. Depending on the decision:
-  //        - resume   → spawn a fresh CLI with --resume
-  //        - finalize → transition to 'idle'
-  //        - fail     → transition to 'error'
-  //
-  // Clock-jump protection: if the tick detects that wall time moved
-  // forward by more than CLOCK_JUMP_MS between ticks (e.g. laptop woke
-  // from sleep), it refreshes all lastProgressAt values to now.
+  // Test harness helpers (dev builds only). The Rust socket server can receive
+  // ping by itself, but page commands need the webview listeners and this
+  // app-specific helper surface.
   useEffect(() => {
-    const STALL_THRESHOLD_MS = 180_000;   // 3 minutes — lenient for slow providers
-    const TICK_INTERVAL_MS = 3_000;
-    const CLOCK_JUMP_MS = 60_000;
-    let lastTickAt = Date.now();
-    const recovering = new Set<string>();
+    if (!import.meta.env.DEV) return;
 
-    const attemptRecovery = async (tabId: string, stdinId: string) => {
-      if (recovering.has(tabId)) return;
-      recovering.add(tabId);
+    import('tauri-plugin-mcp').then(({ setupPluginListeners }) => {
+      setupPluginListeners();
+    }).catch((error) => {
+      console.warn('[TOKENICODE] Failed to init MCP plugin listeners:', error);
+    });
 
-      const cs = useChatStore.getState();
-      const ss = useSessionStore.getState();
-
-      try {
-        // 1. Enter reconnecting — UI keeps partialText visible
-        cs.setSessionStatus(tabId, 'reconnecting');
-
-        // 2. Kill the stalled CLI process + unbind listener
-        try {
-          await bridge.killSession(stdinId);
-        } catch {
-          /* already dead — fine */
+    (window as any).__tokenicode_test = {
+      getMessages(optsOrTabId?: string | { tabId?: string; last?: number; summary?: boolean }) {
+        const opts = typeof optsOrTabId === 'string' ? { tabId: optsOrTabId } : (optsOrTabId || {});
+        const id = opts.tabId || useSessionStore.getState().selectedSessionId;
+        if (!id) return { messages: [], total: 0 };
+        const tab = useChatStore.getState().tabs.get(id);
+        const all = tab?.messages || [];
+        const total = all.length;
+        const messages = opts.last != null ? all.slice(-opts.last) : all;
+        if (opts.summary) {
+          return {
+            messages: messages.map((message: any) => ({
+              id: message.id,
+              role: message.role,
+              type: message.type,
+              toolName: message.toolName || undefined,
+              content: message.type === 'tool_result'
+                ? `[tool_result: ${(message.content || '').slice(0, 80)}...]`
+                : message.type === 'thinking'
+                  ? '[thinking]'
+                  : (message.content || '').slice(0, 150),
+              subAgentDepth: message.subAgentDepth,
+              timestamp: message.timestamp,
+            })),
+            total,
+          };
         }
-        const unlisteners = (window as any).__claudeUnlisteners;
-        if (unlisteners && unlisteners[stdinId]) {
-          try {
-            unlisteners[stdinId]();
-          } catch {
-            /* ignore */
+        return { messages, total };
+      },
+      getLastMessage(tabId?: string) {
+        const { messages } = (window as any).__tokenicode_test.getMessages({ tabId, last: 1 });
+        return messages[0] || null;
+      },
+      getActiveSessionId() {
+        return useSessionStore.getState().selectedSessionId;
+      },
+      getAllSessions() {
+        return useSessionStore.getState().sessions;
+      },
+      getCurrentModel() {
+        return useSettingsStore.getState().selectedModel;
+      },
+      getCurrentProvider() {
+        return useProviderStore.getState().activeProviderId;
+      },
+      isStreaming(tabId?: string) {
+        const id = tabId || useSessionStore.getState().selectedSessionId;
+        if (!id) return false;
+        const tab = useChatStore.getState().tabs.get(id);
+        if (!tab) return false;
+        return !!(tab.partialText || tab.activityStatus?.phase === 'thinking');
+      },
+      isSettingsOpen() {
+        return useSettingsStore.getState().settingsOpen;
+      },
+      status() {
+        const sessionId = useSessionStore.getState().selectedSessionId;
+        const tab = sessionId ? useChatStore.getState().tabs.get(sessionId) : null;
+        const phase = tab?.activityStatus?.phase;
+        const activePhases = new Set(['thinking', 'writing', 'tool', 'awaiting']);
+        const activeStatuses = new Set(['running', 'stopping', 'reconnecting']);
+        const active = !!(
+          tab?.partialText
+          || (phase && activePhases.has(phase))
+          || (tab?.sessionStatus && activeStatuses.has(tab.sessionStatus))
+        );
+        return {
+          session: sessionId,
+          sessionCount: useSessionStore.getState().sessions.length,
+          model: useSettingsStore.getState().selectedModel,
+          provider: useProviderStore.getState().activeProviderId,
+          active,
+          phase: phase || null,
+          sessionStatus: tab?.sessionStatus || null,
+          pendingPermission: !!(window as any).__tokenicode_respond_permission,
+          settingsOpen: useSettingsStore.getState().settingsOpen,
+          messageCount: tab?.messages?.length || 0,
+        };
+      },
+      type(text: string) {
+        const editor = (window as any).__tokenicode_editor;
+        if (!editor) return { error: 'Editor not available (no active session)' };
+        editor.commands.clearContent();
+        editor.commands.insertContent(text);
+        return { typed: text };
+      },
+      send() {
+        const fn = (window as any).__tokenicode_send;
+        if (!fn) return { error: 'Send handler not available' };
+        fn();
+        return { sent: true };
+      },
+      async loadSession(sessionId: string) {
+        const sessions = useSessionStore.getState().sessions;
+        const session = sessions.find((item) => item.id === sessionId);
+        if (!session) return { error: `Session ${sessionId} not found` };
+        const currentId = useSessionStore.getState().selectedSessionId;
+        if (currentId) {
+          useChatStore.getState().saveToCache(currentId);
+          useAgentStore.getState().saveToCache(currentId);
+        }
+        useFileStore.getState().closePreview();
+        useSessionStore.getState().setSelectedSession(sessionId);
+        const restored = useChatStore.getState().restoreFromCache(sessionId);
+        if (restored) {
+          useAgentStore.getState().restoreFromCache(sessionId);
+          if (session.project) {
+            const dir = session.project.startsWith('/') ? session.project : session.projectDir || session.project;
+            useSettingsStore.getState().setWorkingDirectory(dir);
           }
-          delete unlisteners[stdinId];
+          return {
+            switchedTo: sessionId,
+            restored: true,
+            messageCount: useChatStore.getState().tabs.get(sessionId)?.messages?.length || 0,
+          };
         }
-        ss.unregisterStdinTab(stdinId);
-
-        // 3. Look up the session metadata we need to resume.
-        // TC has no cliResumeId field on SessionListItem — the CLI UUID
-        // lives in tab.sessionMeta.sessionId (set by useStreamProcessor
-        // on the first session_id stream event).
-        const session = ss.sessions.find((s) => s.id === tabId);
-        const tab = cs.getTab(tabId);
-        const decision = await inspectSessionForRecovery({
-          cliResumeId: tab?.sessionMeta?.sessionId ?? null,
-          sessionPath: session?.path ?? null,
-        });
-
-        console.warn('[TOKENICODE:watchdog] recovery decision', { tabId, decision });
-
-        if (decision.kind === 'finalize') {
-          cs.setSessionStatus(tabId, 'idle');
-          cs.setSessionMeta(tabId, { stdinId: undefined });
-          return;
+        if (!session.path) {
+          useChatStore.getState().ensureTab(sessionId);
+          useChatStore.getState().resetTab(sessionId);
+          useAgentStore.getState().clearAgents();
+          return { switchedTo: sessionId, restored: false, messageCount: 0, note: 'draft session (no JSONL)' };
         }
-        if (decision.kind === 'fail') {
-          cs.setSessionStatus(tabId, 'error');
-          cs.setSessionMeta(tabId, { stdinId: undefined });
-          return;
-        }
-
-        // 4. Resume path — start a fresh CLI with --resume
-        const newStdinId = `desk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const cwd = workingDirectory ?? '';
-
-        // Fall back to global settings if the original snapshot is missing
-        // (should rarely happen — InputBar stores snapshots on spawn).
-        const settings = useSettingsStore.getState();
-        const effectiveMode = tab?.sessionMeta?.snapshotMode ?? settings.sessionMode;
-        const effectiveThinking = tab?.sessionMeta?.snapshotThinking ?? settings.thinkingLevel;
-
-        await bridge.startSession({
-          prompt: '',  // empty prompt = pre-warm, no message sent
-          cwd,
-          session_id: newStdinId,
-          resume_session_id: decision.cliResumeId,
-          model: tab?.sessionMeta?.spawnedModel ?? tab?.sessionMeta?.model,
-          provider_id: tab?.sessionMeta?.snapshotProviderId ?? undefined,
-          permission_mode: mapSessionModeToPermissionMode(effectiveMode),
-          thinking_level: effectiveThinking,
-        });
-
-        ss.registerStdinTab(newStdinId, tabId);
-        cs.setSessionMeta(tabId, {
-          stdinId: newStdinId,
-          lastProgressAt: Date.now(),
-        });
-        cs.setSessionStatus(tabId, 'running');
-        console.warn('[TOKENICODE:watchdog] resumed successfully', { tabId, newStdinId });
-      } catch (e) {
-        console.error('[TOKENICODE:watchdog] recovery failed', e);
+        useChatStore.getState().ensureTab(sessionId);
+        const dir = session.project?.startsWith('/') ? session.project : session.projectDir || session.project || '';
+        useSettingsStore.getState().setWorkingDirectory(dir);
+        const { clearMessages, addMessage, setSessionStatus, setSessionMeta } = useChatStore.getState();
+        clearMessages(sessionId);
+        useAgentStore.getState().clearAgents();
+        setSessionStatus(sessionId, 'running');
+        setSessionMeta(sessionId, { sessionId, stdinId: undefined });
         try {
-          useChatStore.getState().setSessionStatus(tabId, 'error');
-        } catch {
-          /* ignore */
+          const rawMessages = await bridge.loadSession(session.path);
+          if (useSessionStore.getState().selectedSessionId !== sessionId) {
+            return { switchedTo: sessionId, aborted: true, note: 'User switched away during load' };
+          }
+          const { messages, agents } = parseSessionMessages(rawMessages);
+          for (const agent of agents) useAgentStore.getState().upsertAgent(agent);
+          for (const message of messages) {
+            if ((message as any).toolResultContent) {
+              const { toolResultContent, ...baseMessage } = message as any;
+              addMessage(sessionId, baseMessage);
+              useChatStore.getState().updateMessage(sessionId, message.id, { toolResultContent });
+            } else {
+              addMessage(sessionId, message);
+            }
+          }
+          setSessionStatus(sessionId, 'completed');
+          return { switchedTo: sessionId, restored: false, messageCount: messages.length };
+        } catch (error) {
+          if (useSessionStore.getState().selectedSessionId !== sessionId) {
+            return { switchedTo: sessionId, aborted: true, note: 'User switched away during load' };
+          }
+          useChatStore.getState().setSessionStatus(sessionId, 'error');
+          return { switchedTo: sessionId, error: `Failed to load: ${(error as Error).message}` };
         }
-      } finally {
-        recovering.delete(tabId);
-      }
+      },
+      switchSession(sessionId: string) {
+        const sessionState = useSessionStore.getState();
+        const currentId = sessionState.selectedSessionId;
+        if (currentId) {
+          useChatStore.getState().saveToCache(currentId);
+          useAgentStore.getState().saveToCache(currentId);
+        }
+        sessionState.setSelectedSession(sessionId);
+        const restored = useChatStore.getState().restoreFromCache(sessionId);
+        if (restored) useAgentStore.getState().restoreFromCache(sessionId);
+        useFileStore.getState().closePreview();
+        return { switchedTo: sessionId, restored };
+      },
+      newSession(cwd?: string) {
+        const currentTabId = useSessionStore.getState().selectedSessionId;
+        if (currentTabId) {
+          useChatStore.getState().saveToCache(currentTabId);
+          useAgentStore.getState().saveToCache(currentTabId);
+          if (currentTabId.startsWith('desk_')) {
+            const tabState = useChatStore.getState().tabs.get(currentTabId);
+            if (!tabState || tabState.messages.length === 0) {
+              useSessionStore.getState().removeDraft(currentTabId);
+              useChatStore.getState().removeTab(currentTabId);
+            }
+          }
+        }
+        if (!cwd) {
+          useSessionStore.getState().setSelectedSession(null);
+          useSettingsStore.getState().setWorkingDirectory('');
+          return { action: 'newSession' };
+        }
+        const newId = `desk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        useSessionStore.getState().setSelectedSession(newId);
+        useSettingsStore.getState().setWorkingDirectory(cwd);
+        useChatStore.getState().restoreFromCache(newId);
+        return { action: 'newSession', session: newId };
+      },
+      switchModel(modelId: string) {
+        useSettingsStore.getState().setSelectedModel(modelId);
+        return { model: modelId };
+      },
+      switchProvider(providerId: string | null) {
+        useProviderStore.getState().setActive(providerId);
+        return { provider: providerId };
+      },
+      openSettings() {
+        useSettingsStore.setState({ settingsOpen: true });
+        return { settingsOpen: true };
+      },
+      closeSettings() {
+        useSettingsStore.setState({ settingsOpen: false });
+        return { settingsOpen: false };
+      },
+      switchSettingsTab(tabId: string) {
+        const button = document.querySelector(`[data-testid="settings-tab-${tabId}"]`);
+        if (button) {
+          (button as HTMLElement).click();
+          return { tab: tabId };
+        }
+        return { error: `Tab ${tabId} not found` };
+      },
+      allowPermission() {
+        const fn = (window as any).__tokenicode_respond_permission;
+        if (!fn) return { error: 'No pending permission request' };
+        fn(true);
+        return { allowed: true };
+      },
+      denyPermission() {
+        const fn = (window as any).__tokenicode_respond_permission;
+        if (!fn) return { error: 'No pending permission request' };
+        fn(false);
+        return { denied: true };
+      },
+      stop() {
+        const button = document.querySelector('[data-testid="stop-button"]') as HTMLElement;
+        if (!button) return { stopped: false, reason: 'no running session' };
+        button.click();
+        return { stopped: true };
+      },
+      deleteCurrentSession() {
+        const sessionId = useSessionStore.getState().selectedSessionId;
+        if (!sessionId) return { deleted: false, reason: 'no active session' };
+        const stdinId = useChatStore.getState().tabs.get(sessionId)?.sessionMeta?.stdinId;
+        if (stdinId) bridge.killSession(stdinId).catch(() => {});
+        useChatStore.getState().removeTab(sessionId);
+        useAgentStore.getState().clearAgents();
+        if (sessionId.startsWith('desk_')) useSessionStore.getState().removeDraft(sessionId);
+        useSessionStore.getState().setSelectedSession(null);
+        return { deleted: true, session: sessionId };
+      },
     };
 
-    const tick = () => {
-      const now = Date.now();
-
-      if (now - lastTickAt > CLOCK_JUMP_MS) {
-        console.warn(
-          '[TOKENICODE:watchdog] clock jump detected',
-          { gap_ms: now - lastTickAt },
-        );
-        const tabs = useChatStore.getState().tabs;
-        tabs.forEach((tab, tabId) => {
-          if (tab.sessionStatus === 'running') {
-            useChatStore.getState().setSessionMeta(tabId, { lastProgressAt: now });
-          }
-        });
-        lastTickAt = now;
-        return;
-      }
-      lastTickAt = now;
-
-      const tabs = useChatStore.getState().tabs;
-      tabs.forEach((tab, tabId) => {
-        if (tab.sessionStatus !== 'running') return;
-        const lastAt = tab.sessionMeta?.lastProgressAt;
-        if (!lastAt) return;
-        if (now - lastAt < STALL_THRESHOLD_MS) return;
-
-        const stdinId = tab.sessionMeta?.stdinId;
-        if (!stdinId) return;
-
-        console.warn('[TOKENICODE:watchdog] stall detected — attempting recovery', {
-          tabId,
-          stdinId,
-          stalled_ms: now - lastAt,
-        });
-        attemptRecovery(tabId, stdinId).catch((err) =>
-          console.error('[TOKENICODE:watchdog] attemptRecovery uncaught', err),
-        );
-      });
+    return () => {
+      delete (window as any).__tokenicode_test;
     };
+  }, []);
 
-    const interval = setInterval(tick, TICK_INTERVAL_MS);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workingDirectory]);
+  // ── Watchdog removed (Phase 1 decision §5.8) ──────────────────────
+  // The automatic 3-minute stall detection and auto-recovery was removed because:
+  // 1. It never successfully recovered in practice (empty prompt bug, no listeners)
+  // 2. Phase 1 lifecycle fixes reduce the root causes of stalled sessions
+  // Manual retry is available via the "session unresponsive" button in ChatPanel.
 
   // Confirm before closing the window (red X / Cmd+Q)
   const closePendingRef = useRef(false);
@@ -355,11 +462,18 @@ function App() {
   useEffect(() => {
     bridge.listActiveProcesses().then((activeIds) => {
       if (!activeIds.length) return;
-      const { stdinToTab } = useSessionStore.getState();
-      const orphaned = activeIds.filter((id) => !stdinToTab[id]);
+      const orphaned = activeIds.filter((id) => !hasRecoverableFrontendSession(id));
       for (const id of orphaned) {
         console.log('[TOKENICODE:cleanup] killing orphaned process:', id);
+        const ownerTabId = useSessionStore.getState().getTabForStdin(id);
         bridge.killSession(id).catch(() => {});
+        useSessionStore.getState().unregisterStdinTab(id);
+        if (ownerTabId && useChatStore.getState().getTab(ownerTabId)?.sessionMeta.stdinId === id) {
+          useChatStore.getState().setSessionMeta(ownerTabId, {
+            stdinId: undefined,
+            lastProgressAt: undefined,
+          });
+        }
       }
     }).catch(() => {});
   }, []);
@@ -507,22 +621,22 @@ function App() {
         const restored = useChatStore.getState().restoreFromCache(previousSessionId);
         if (restored) {
           useAgentStore.getState().restoreFromCache(previousSessionId);
-          // Restore working directory
+          // Restore working directory — S16 (v3 §4.3): prefer the already-decoded
+          // `project` field (set by decode_project_name in Rust). Only fall back
+          // to the backend decoder when `project` is missing, and never do the
+          // naive `.replace(/-/g, '/')` that silently mangles hyphen names.
           const projectPath = prevSession.project || prevSession.projectDir;
           if (projectPath) {
-            // Resolve project path using same logic as ConversationList
-            let resolved = projectPath;
-            if (!projectPath.startsWith('/') && !/^[A-Za-z]:[/\\]/.test(projectPath)) {
-              if (projectPath.startsWith('~/')) {
-                resolved = projectPath; // will work with home dir expansion
-              } else if (/^[A-Za-z]-/.test(projectPath)) {
-                const drive = projectPath[0];
-                resolved = `${drive}:\\${projectPath.slice(2).replace(/-/g, '\\')}`;
-              } else {
-                resolved = projectPath.replace(/-/g, '/');
-              }
+            const useDirectly = projectPath.startsWith('/')
+              || /^[A-Za-z]:[/\\]/.test(projectPath)
+              || projectPath.startsWith('~/');
+            if (useDirectly) {
+              useSettingsStore.getState().setWorkingDirectory(projectPath);
+            } else {
+              bridge.decodeProjectDir(projectPath)
+                .then((decoded) => useSettingsStore.getState().setWorkingDirectory(decoded))
+                .catch(() => useSettingsStore.getState().setWorkingDirectory(projectPath));
             }
-            useSettingsStore.getState().setWorkingDirectory(resolved);
           }
         }
       }

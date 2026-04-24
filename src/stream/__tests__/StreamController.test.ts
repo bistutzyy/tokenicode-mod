@@ -105,6 +105,19 @@ describe('StreamController · §4.3.1', () => {
       expect(ctrl.__testing.hasBuffer('s2')).toBe(true);
       expect(ctrl.__testing.getBuffer('s2')?.text).toBe('beta');
     });
+
+    it('clearThinking_clears_pending_thinking_without_dropping_text', () => {
+      const { ctrl, scheduler, textCalls, thinkingCalls } = makeHarness({ s1: 't1' });
+      ctrl.appendText('s1', 'answer ');
+      ctrl.appendThinking('s1', 'hidden tail');
+
+      ctrl.clearThinking('s1');
+      scheduler.flushRaf();
+
+      expect(textCalls).toEqual([['t1', 'answer ']]);
+      expect(thinkingCalls).toEqual([]);
+      expect(ctrl.__testing.hasBuffer('s1')).toBe(false);
+    });
   });
 
   describe('completeStream', () => {
@@ -208,6 +221,24 @@ describe('StreamController · §4.3.1', () => {
   });
 
   describe('scheduling', () => {
+    it('default_fallback_interval_stays_responsive', () => {
+      expect(DEFAULT_CONFIG.intervalMs).toBeLessThanOrEqual(100);
+    });
+
+    it('first_thinking_delta_flushes_immediately_before_raf', () => {
+      const { ctrl, scheduler, thinkingCalls } = makeHarness({ s1: 't1' });
+      ctrl.appendThinking('s1', 'a');
+      expect(thinkingCalls).toEqual([['t1', 'a']]);
+      expect(scheduler.pendingRaf()).toBe(0);
+
+      ctrl.appendThinking('s1', 'b');
+      expect(thinkingCalls).toEqual([['t1', 'a']]);
+      expect(scheduler.pendingRaf()).toBe(1);
+
+      scheduler.flushRaf();
+      expect(thinkingCalls).toEqual([['t1', 'a'], ['t1', 'b']]);
+    });
+
     it('rAF_coalesces_rapid_appends_into_single_flush', () => {
       const { ctrl, scheduler, textCalls } = makeHarness({ s1: 't1' });
       ctrl.appendText('s1', 'a');

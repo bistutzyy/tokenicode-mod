@@ -60,6 +60,10 @@ CLAUDE.md
 AGENTS.md
 .claude/
 .trellis/
+.codex/
+.agents/
+.agent-log
+.session-id
 
 # Internal docs (not for public repo)
 docs/cloud-thoughts*
@@ -69,3 +73,6 @@ docs/TOKENICODE重构*
 docs/豆包*
 screenshots/rewind.png
 screenshots/slash-commands.png
+
+# Test run outputs
+.test/runs/
