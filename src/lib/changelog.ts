@@ -19,6 +19,58 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.7',
+    date: '2026-04-27',
+    highlights: {
+      zh: [
+        '会话生命周期和流式体验稳定性大修，切会话 / 切模型更稳',
+        'API 重试和限流状态会直接显示在对话活动区',
+        '移除外部 Web Font 依赖，改用本地系统字体栈',
+      ],
+      en: [
+        'Session lifecycle and streaming stability overhaul for safer session/model switching',
+        'API retry and rate-limit status now appears directly in the activity area',
+        'Removed external web font dependency and switched to the local system font stack',
+      ],
+    },
+    categories: [
+      {
+        label: { zh: '修复', en: 'Fixed' },
+        items: {
+          zh: [
+            '会话生命周期和流式体验稳定性大修 — 切会话 / 切 Provider / 切 Model 时的清理统一走 lifecycle 入口，减少 stdin 路由串台',
+            '子进程隐性退出时界面会正确收尾，不会一直转圈',
+            'Stop 之后再发消息继续走当前会话，Thinking 计时器不再闪负数',
+            'Provider 流式体验贴近原生 CLI，减少重复 thinking 块，stop / interrupt 后能恢复',
+            '本地系统字体栈 — 移除外部 Web Font 依赖，离线或网络不稳定时界面字体也能稳定加载',
+          ],
+          en: [
+            'Session lifecycle and streaming stability overhaul — cleanup now goes through the lifecycle path when switching sessions, providers, or models, reducing stdin route cross-talk',
+            'Hidden child-process exits now finalize the UI correctly instead of spinning forever',
+            'Sending after Stop stays in the current session, and the thinking timer no longer flashes negative values',
+            'Provider streaming is closer to the native CLI, with fewer duplicate thinking blocks and recovery after stop / interrupt',
+            'Local system font stack — removed the external web font dependency so typography stays stable offline or on poor networks',
+          ],
+        },
+      },
+      {
+        label: { zh: '新增', en: 'New' },
+        items: {
+          zh: [
+            '能力边界加固 — Markdown 图片 / HTML/SVG 预览 / 文件系统授权走后端路径校验',
+            'Opus 4.7 规范化 — CLI 模型名统一到明确的 1M variant',
+            '.test CLI 测试框架 — 覆盖 lifecycle / routing / provider / interrupt / streaming 多组回归场景',
+          ],
+          en: [
+            'Capability boundary hardening — Markdown images, HTML/SVG preview, and filesystem access now go through backend path validation',
+            'Opus 4.7 normalization — CLI model names now map to the explicit 1M variant',
+            '.test CLI framework — regression coverage for lifecycle, routing, provider, interrupt, and streaming flows',
+          ],
+        },
+      },
+    ],
+  },
+  {
     version: '0.10.6',
     date: '2026-04-18',
     highlights: {

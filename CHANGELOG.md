@@ -6,7 +6,7 @@ All notable changes to TOKENICODE will be documented in this file.
 
 ---
 
-## [Unreleased]
+## [0.10.7] - 2026-04-27
 
 ### 修复
 
@@ -17,6 +17,7 @@ All notable changes to TOKENICODE will be documented in this file.
   - **Thinking 计时器不再闪负数**。
   - **API 重试 / 限流状态直接显示在对话活动区** —— 不再静默转圈，能看到背后发生了什么。
   - **Provider 流式体验贴近原生 CLI** — 消除重复 thinking 块、stop/interrupt 后能恢复。
+- **本地系统字体栈** —— 移除外部 Web Font 依赖，改用系统字体；离线或网络不稳定时界面字体也能稳定加载。
 
 ### 新增
 
