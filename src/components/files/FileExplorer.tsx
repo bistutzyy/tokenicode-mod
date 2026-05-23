@@ -161,10 +161,14 @@ function ContextMenu({ menu, onClose, callbacks }: {
         // Delay IPC to let menu close + main thread settle before presenting share UI
         setTimeout(() => {
           bridge.shareToWechat(filePath)
-            .then(() => {
-              if (!isMac()) showToast(t('files.shareToWechatSuccess'), 'success');
+            .then((result) => {
+              if (result === 'fallback') {
+                showToast(t('files.shareToWechatFallback'), 'success');
+              } else if (!isMac()) {
+                showToast(t('files.shareToWechatSuccess'), 'success');
+              }
             })
-            .catch(() => showToast(t('files.shareToWechatFailed'), 'error'));
+            .catch((err) => showToast(`${t('files.shareToWechatFailed')}: ${err}`, 'error'));
         }, 100);
       },
     },

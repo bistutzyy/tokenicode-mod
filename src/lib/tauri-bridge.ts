@@ -248,7 +248,7 @@ export const bridge = {
     invoke<void>('share_file', { path }),
 
   shareToWechat: (path: string) =>
-    invoke<void>('share_to_wechat', { path }),
+    invoke<string>('share_to_wechat', { path }),
 
   readFileTree: (path: string, depth?: number) =>
     invoke<FileNode[]>('read_file_tree', { path, depth }),

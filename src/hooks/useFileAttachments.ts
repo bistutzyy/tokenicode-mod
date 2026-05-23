@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { bridge } from '../lib/tauri-bridge';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { isTreeDragActive } from '../lib/drag-state';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useFileStore } from '../stores/fileStore';
@@ -50,6 +50,21 @@ function guessMime(name: string): string {
 function isImageExt(name: string): boolean {
   const ext = name.split('.').pop()?.toLowerCase() || '';
   return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext);
+}
+
+function toLogicalPos(pos: { x: number; y: number }): { x: number; y: number } {
+  const dpr = window.devicePixelRatio || 1;
+  return { x: pos.x / dpr, y: pos.y / dpr };
+}
+
+function isPosOverFileTree(pos: { x: number; y: number }): boolean {
+  const treeEl = document.querySelector('[data-file-tree]');
+  if (!treeEl) return false;
+  const rect = treeEl.getBoundingClientRect();
+  const lp = toLogicalPos(pos);
+  if (lp.x >= rect.left && lp.x <= rect.right && lp.y >= rect.top && lp.y <= rect.bottom) return true;
+  if (pos.x >= rect.left && pos.x <= rect.right && pos.y >= rect.top && pos.y <= rect.bottom) return true;
+  return false;
 }
 
 /** Generate a small base64 thumbnail for an image file */
@@ -237,17 +252,14 @@ export function useFileAttachments() {
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
-    getCurrentWindow().onDragDropEvent((event) => {
+    getCurrentWebview().onDragDropEvent((event) => {
       const { type } = event.payload;
 
       if (type === 'over' || type === 'enter') {
-        // Skip internal tree drags
         if (isTreeDragActive()) return;
-        // Check if pointer is over the file tree area
         const pos = (event.payload as any).position;
         if (pos) {
-          const el = document.elementFromPoint(pos.x, pos.y);
-          const overTree = !!el?.closest('[data-file-tree]');
+          const overTree = isPosOverFileTree(pos);
           useFileStore.getState().setDragOverTree(overTree);
         }
         return;

@@ -3592,39 +3592,52 @@ async fn share_file(path: String, app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Directly invoke WeChat's sharing service for a file (macOS only).
+/// Share a file to WeChat.
+///
+/// Strategy (macOS):
+///   1. Try NSSharingService — works when WeChat registers a share extension.
+///   2. Fallback: copy the file to the system pasteboard and open WeChat via
+///      its `weixin://` URL scheme so the user can paste.
+///   Returns `"fallback"` when using the clipboard path.
+///
+/// Strategy (Windows):
+///   Copy file to clipboard via PowerShell, then open WeChat via `weixin://`.
 #[tauri::command]
-async fn share_to_wechat(path: String, app: AppHandle) -> Result<(), String> {
+#[allow(deprecated)]
+async fn share_to_wechat(path: String, app: AppHandle) -> Result<String, String> {
+    if !std::path::Path::new(&path).exists() {
+        return Err("File not found".to_string());
+    }
+
     #[cfg(target_os = "macos")]
     {
+        let (tx, rx) = std::sync::mpsc::channel::<String>();
+
+        let path_clone = path.clone();
         app.run_on_main_thread(move || {
-            objc::rc::autoreleasepool(|| {
+            let result = objc::rc::autoreleasepool(|| -> String {
                 unsafe {
                     use objc::msg_send;
                     use objc::runtime::{Class, Object};
                     use objc::sel;
                     use objc::sel_impl;
 
-                    let file_url = create_nsurl_from_path(&path);
+                    let file_url = create_nsurl_from_path(&path_clone);
                     if file_url.is_null() {
-                        return;
+                        return "error:Failed to create file URL".to_string();
                     }
 
-                    // Create NSArray with the URL
                     let nsarray_class = Class::get("NSArray").unwrap();
                     let items: *mut Object = msg_send![nsarray_class,
                         arrayWithObject: file_url
                     ];
 
-                    // Get all sharing services for this file
                     let service_class = Class::get("NSSharingService").unwrap();
                     let services: *mut Object = msg_send![service_class,
                         sharingServicesForItems: items
                     ];
-
                     let count: usize = msg_send![services, count];
 
-                    // Find WeChat's sharing service by title
                     for i in 0..count {
                         let service: *mut Object = msg_send![services, objectAtIndex: i];
                         let title: *mut Object = msg_send![service, title];
@@ -3633,38 +3646,89 @@ async fn share_to_wechat(path: String, app: AppHandle) -> Result<(), String> {
                             continue;
                         }
                         let title_str = std::ffi::CStr::from_ptr(utf8).to_string_lossy();
-                        if title_str.contains("WeChat") || title_str.contains("微信") {
+                        let lower = title_str.to_lowercase();
+                        if lower.contains("wechat") || title_str.contains("微信") {
                             let _: () = msg_send![service, performWithItems: items];
-                            return;
+                            return "service".to_string();
                         }
                     }
 
-                    // WeChat service not found — log for debugging
-                    eprintln!(
-                        "[share_to_wechat] WeChat sharing service not found. Available services:"
-                    );
-                    for i in 0..count {
-                        let service: *mut Object = msg_send![services, objectAtIndex: i];
-                        let title: *mut Object = msg_send![service, title];
-                        let utf8: *const std::ffi::c_char = msg_send![title, UTF8String];
-                        if !utf8.is_null() {
-                            let t = std::ffi::CStr::from_ptr(utf8).to_string_lossy();
-                            eprintln!("  - {}", t);
-                        }
+                    // Clipboard fallback
+                    let pb_class = Class::get("NSPasteboard").unwrap();
+                    let pb: *mut Object = msg_send![pb_class, generalPasteboard];
+                    let _: () = msg_send![pb, clearContents];
+
+                    let write_arr: *mut Object = msg_send![nsarray_class,
+                        arrayWithObject: file_url
+                    ];
+                    let ok: bool = msg_send![pb, writeObjects: write_arr];
+                    if !ok {
+                        return "error:Failed to copy file to clipboard".to_string();
                     }
+
+                    let ws_class = Class::get("NSWorkspace").unwrap();
+                    let ws: *mut Object = msg_send![ws_class, sharedWorkspace];
+
+                    let scheme = "weixin://";
+                    let nsstring_class = Class::get("NSString").unwrap();
+                    let scheme_ns: *mut Object = msg_send![nsstring_class, alloc];
+                    let scheme_ns: *mut Object = msg_send![scheme_ns,
+                        initWithBytes: scheme.as_ptr() as *const std::ffi::c_void
+                        length: scheme.len()
+                        encoding: 4u64
+                    ];
+
+                    let nsurl_class = Class::get("NSURL").unwrap();
+                    let wechat_url: *mut Object = msg_send![nsurl_class,
+                        URLWithString: scheme_ns
+                    ];
+
+                    if !wechat_url.is_null() {
+                        let _: bool = msg_send![ws, openURL: wechat_url];
+                    }
+
+                    "fallback".to_string()
                 }
             });
+            let _ = tx.send(result);
         })
         .map_err(|e| format!("Failed to share to WeChat: {}", e))?;
+
+        match rx.recv() {
+            Ok(ref r) if r.starts_with("error:") => {
+                return Err(r.strip_prefix("error:").unwrap_or(r).to_string());
+            }
+            Ok(r) => return Ok(r),
+            Err(_) => return Err("Share thread communication failed".to_string()),
+        }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        let _ = app;
+        let ps_script = format!(
+            "Add-Type -AssemblyName System.Windows.Forms; \
+             $fc = New-Object System.Collections.Specialized.StringCollection; \
+             $fc.Add('{}'); \
+             [System.Windows.Forms.Clipboard]::SetFileDropList($fc)",
+            path.replace('\'', "''")
+        );
+        let _ = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-Command", &ps_script])
+            .output();
+        let _ = std::process::Command::new("cmd")
+            .args(["/c", "start", "", "weixin://"])
+            .spawn();
+
+        return Ok("fallback".to_string());
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = app;
         let _ = path;
+        return Err("Not supported on this platform".to_string());
     }
-
-    Ok(())
 }
 
 /// NEW-Q (v3 §4.3): extract a semver triple from raw CLI version output.
