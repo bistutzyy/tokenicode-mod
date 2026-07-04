@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useSessionStore } from '../../stores/sessionStore';
@@ -5,8 +6,12 @@ import { ConversationList } from '../conversations/ConversationList';
 import { useT } from '../../lib/i18n';
 import { useAgentStore } from '../../stores/agentStore';
 import { IS_ALPHA } from '../../lib/edition';
+import { ProjectList } from './ProjectList';
+import { UserAvatar } from '../shared/UserAvatar';
+import { ProfileStatsModal } from '../profile/ProfileStatsModal';
 
 export function Sidebar() {
+  const [profileOpen, setProfileOpen] = useState(false);
   const toggleSidebar = useSettingsStore((s) => s.toggleSidebar);
   const toggleSettings = useSettingsStore((s) => s.toggleSettings);
   const updateAvailable = useSettingsStore((s) => s.updateAvailable);
@@ -20,7 +25,23 @@ export function Sidebar() {
       {/* Logo area */}
       <div
         className="flex items-center justify-between mb-6 mt-2 pl-5 pr-3.5 cursor-default">
-        <div className="flex items-center pointer-events-none">
+        <div className="flex items-center pointer-events-none gap-2">
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="pointer-events-auto relative rounded-lg focus:outline-none
+              focus:ring-2 focus:ring-accent/40 hover:scale-105 hover:opacity-95
+              transition-smooth ring-1 ring-accent/25"
+            title={t('profilestats.avatarHint')}
+          >
+            <UserAvatar size="w-8 h-8" rounded="rounded-lg" />
+            <span className="absolute -bottom-1 -right-1 w-[15px] h-[15px] rounded-full
+              bg-accent border-2 border-bg-sidebar flex items-center justify-center shadow-sm">
+              <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="white"
+                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 13.5h12M4 13.5V8.5M7 13.5V5M10 13.5V9.5M13 13.5V3" />
+              </svg>
+            </span>
+          </button>
           {IS_ALPHA ? (
             <>
               <span className="text-[14px] font-bold tracking-tight text-text-primary">
@@ -32,7 +53,8 @@ export function Sidebar() {
               </span>
             </>
           ) : (
-            /* Text logo — TOKEN/CODE, slash uses theme accent */
+            <>
+            {/* Text logo — TOKEN/CODE, slash uses theme accent */}
             <svg viewBox="0 0 689 90" fill="none"
               className="h-[14px]" style={{width: 'auto'}}>
               <path d="M381.126 0H393.126L370.35 90H358.35L370.35 42L381.126 0Z" style={{fill: 'var(--color-accent)'}}/>
@@ -46,6 +68,11 @@ export function Sidebar() {
               <path d="M94.05 82.1C87.5233 82.1 81.5833 80.5967 76.23 77.59C70.95 74.51 66.7333 70.22 63.58 64.72C60.4267 59.22 58.85 52.73 58.85 45.25C58.85 37.77 60.4267 31.28 63.58 25.78C66.7333 20.2067 70.95 15.9167 76.23 12.91C81.5833 9.90333 87.5233 8.4 94.05 8.4C100.577 8.4 106.48 9.90333 111.76 12.91C117.113 15.9167 121.367 20.2067 124.52 25.78C127.673 31.28 129.25 37.77 129.25 45.25C129.25 52.73 127.673 59.22 124.52 64.72C121.367 70.22 117.113 74.51 111.76 77.59C106.48 80.5967 100.577 82.1 94.05 82.1ZM94.05 73.85C99.0367 73.85 103.51 72.7867 107.47 70.66C111.43 68.46 114.583 65.2333 116.93 60.98C119.277 56.7267 120.45 51.4833 120.45 45.25C120.45 39.0167 119.277 33.81 116.93 29.63C114.583 25.3767 111.43 22.15 107.47 19.95C103.51 17.75 99.0367 16.65 94.05 16.65C89.1367 16.65 84.6633 17.75 80.63 19.95C76.67 22.15 73.5167 25.3767 71.17 29.63C68.8233 33.81 67.65 39.0167 67.65 45.25C67.65 51.4833 68.8233 56.7267 71.17 60.98C73.5167 65.2333 76.67 68.46 80.63 70.66C84.6633 72.7867 89.1367 73.85 94.05 73.85Z" fill="currentColor"/>
               <path d="M0 9.5H57.2V17.75H0V9.5ZM24.2 16.87H33V81H24.2V16.87Z" fill="currentColor"/>
             </svg>
+            <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-semibold
+              bg-accent/15 text-accent leading-none">
+              魔改版
+            </span>
+            </>
           )}
         </div>
         <button onClick={toggleSidebar}
@@ -87,6 +114,9 @@ export function Sidebar() {
       </button>
       </div>
 
+      {/* Pinned project switcher */}
+      <ProjectList />
+
       {/* Conversation History */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 no-scrollbar">
         <ConversationList />
@@ -113,6 +143,7 @@ export function Sidebar() {
           {t('settings.title')}
         </button>
       </div>
+      <ProfileStatsModal open={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   );
 }

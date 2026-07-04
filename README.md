@@ -2,11 +2,11 @@
 
 <img src="public/app-icon.png" alt="TOKENICODE Logo" width="120" />
 
-# TOKENICODE
+# TOKENICODE Mod
 
-### A Beautiful Desktop Client for Claude Code
+### A Beautiful Desktop Client for Claude Code (forked mod)
 
-[![Version](https://img.shields.io/github/v/release/yiliqi78/TOKENICODE?style=flat-square&color=blue)](https://github.com/yiliqi78/TOKENICODE/releases)
+[![Version](https://img.shields.io/github/v/release/bistutzyy/tokenicode-mod?style=flat-square&color=blue)](https://github.com/bistutzyy/tokenicode-mod/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=flat-square)](#installation)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app)
@@ -14,13 +14,34 @@
 
 **TOKENICODE** wraps the powerful [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) in a polished desktop interface — bring your own API key, connect any provider, and get a native coding experience with file exploration, session management, and structured permission control.
 
-[**Download**](https://github.com/yiliqi78/TOKENICODE/releases) · [**Features**](#features) · [**Screenshots**](#screenshots)
+[**Download**](https://github.com/bistutzyy/tokenicode-mod/releases) · [**Features**](#features) · [**Screenshots**](#screenshots)
 
 ---
 
 **[English](README.md)** | **[中文](README_zh.md)**
 
 </div>
+
+## 📌 About This Mod
+
+This is a **personal mod of TOKENICODE**, adding extra features on top of the original.
+
+- **Original project**: [yiliqi78/TOKENICODE](https://github.com/yiliqi78/TOKENICODE) (Apache-2.0) — a beautiful desktop client for Claude Code
+- **Reference mod**: [mistydew/tokenicode-deepseek-alpha](https://github.com/mistydew/tokenicode-deepseek-alpha)
+
+### Mod features
+- 🖼️ **Qwen VL image pre-description**: when the main model has no vision, Qwen VL pre-describes images and injects text into the CLI prompt
+- 💰 **Qwen balance query**: avatar popup shows Aliyun account balance (BSS OpenAPI HMAC-SHA1 signing; needs your own RAM AK/SK)
+- 📊 **Avatar stats popup**: click avatar for local session usage heatmap + model distribution
+- 🌐 **Web preview panel**: URL bar + back/forward/refresh + snapshot capture
+- 📁 **Sidebar project list**: one-click switch + new conversation
+- 🔧 **UI tweaks**: removed feedback/usage tabs, renamed "魔改版", project click starts new conversation
+
+> ⚠️ No auto-update (updater removed). Download new versions manually from [Releases](https://github.com/bistutzyy/tokenicode-mod/releases).
+>
+> ⚠️ Balance query requires configuring `~/.tokenicode/vision-credentials.json` (Aliyun RAM AK/SK). The repo contains no personal credentials.
+
+---
 
 ## Why TOKENICODE?
 

@@ -2,11 +2,11 @@
 
 <img src="public/app-icon.png" alt="TOKENICODE Logo" width="120" />
 
-# TOKENICODE
+# TOKENICODE 魔改版
 
-### Claude Code 精美桌面客户端
+### Claude Code 精美桌面客户端(二创魔改)
 
-[![Version](https://img.shields.io/github/v/release/yiliqi78/TOKENICODE?style=flat-square&color=blue)](https://github.com/yiliqi78/TOKENICODE/releases)
+[![Version](https://img.shields.io/github/v/release/bistutzyy/tokenicode-mod?style=flat-square&color=blue)](https://github.com/bistutzyy/tokenicode-mod/releases)
 [![License](https://img.shields.io/badge/许可证-Apache%202.0-green?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/平台-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=flat-square)](#安装)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app)
@@ -14,13 +14,34 @@
 
 **TOKENICODE** 为 [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) 打造精美的桌面图形界面 — 自由接入第三方 API，原生支持国内服务商，提供文件管理、会话管理和结构化权限控制的完整体验。
 
-[**下载**](https://github.com/yiliqi78/TOKENICODE/releases) · [**功能**](#功能) · [**截图**](#截图)
+[**下载**](https://github.com/bistutzyy/tokenicode-mod/releases) · [**功能**](#功能) · [**截图**](#截图)
 
 ---
 
 **[English](README.md)** | **[中文](README_zh.md)**
 
 </div>
+
+## 📌 关于本魔改版
+
+本仓库是 **TOKENICODE 的二次魔改版**,在原作者基础上增加了一系列个人向功能。
+
+- **原项目**:[yiliqi78/TOKENICODE](https://github.com/yiliqi78/TOKENICODE)(Apache-2.0)— Claude Code 的精美桌面客户端
+- **参考二创**:[mistydew/tokenicode-deepseek-alpha](https://github.com/mistydew/tokenicode-deepseek-alpha)
+
+### 魔改内容
+- 🖼️ **千问 VL 识图预描述**:主模型(DeepSeek)无视觉能力时,前端用千问 VL 预描述图片,文本注入 CLI prompt
+- 💰 **千问余额查询**:头像弹窗里显示阿里云账户余额(走 BSS OpenAPI HMAC-SHA1 签名,需自备 RAM AK/SK)
+- 📊 **头像图形化统计弹窗**:点头像看本机会话用量热力图 + 模型分布
+- 🌐 **右侧网页预览面板**:URL 栏 + 前进/后退/刷新 + 快照捕获
+- 📁 **侧栏常驻项目列表**:一键切换项目 + 开新对话
+- 🔧 **UI 调整**:去掉反馈/用量 tab、改名"魔改版"、项目点击开新对话归组
+
+> ⚠️ 本魔改版**不提供自动更新**(updater 已移除)。新版本请手动到 [Releases](https://github.com/bistutzyy/tokenicode-mod/releases) 下载。
+>
+> ⚠️ 余额查询需自行配置 `~/.tokenicode/vision-credentials.json`(含阿里云 RAM AK/SK),**仓库不含任何个人凭据**。
+
+---
 
 ## 为什么选择 TOKENICODE？
 

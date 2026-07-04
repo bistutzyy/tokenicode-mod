@@ -1222,6 +1222,16 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
             lastProgressAt: undefined,
             apiRetry: undefined,
           });
+          // Record main-model usage for the 5h rolling window (需求3 用量表).
+          // Best-effort: never let logging interfere with the result flow.
+          bridge.appendUsageLog({
+            ts: Date.now(),
+            source: 'cli-main',
+            inputTokens: resultInput,
+            outputTokens: resultOutput,
+            cost: msg.total_cost_usd ?? 0,
+            model: useSettingsStore.getState().selectedModel,
+          }).catch(() => { /* usage log is best-effort */ });
         }
         if (typeof msg.result === 'string' && msg.result && !isCliPlaceholder(msg.result)) {
           // Only add if not already delivered via 'assistant' event
@@ -2702,6 +2712,16 @@ export function useStreamProcessor(config: StreamProcessorConfig) {
             lastProgressAt: undefined,
             apiRetry: undefined,
           });
+          // Record main-model usage for the 5h rolling window (需求3 用量表).
+          // Best-effort: never let logging interfere with the result flow.
+          bridge.appendUsageLog({
+            ts: Date.now(),
+            source: 'cli-main',
+            inputTokens: resultInput,
+            outputTokens: resultOutput,
+            cost: msg.total_cost_usd ?? 0,
+            model: useSettingsStore.getState().selectedModel,
+          }).catch(() => { /* usage log is best-effort */ });
         }
         agentActions.completeAll(
           msg.subtype === 'success' ? 'completed' : 'error'

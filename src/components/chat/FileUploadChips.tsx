@@ -66,6 +66,34 @@ export function FileUploadChips({ files, onRemove, isProcessing }: FileUploadChi
             {formatSize(file.size)}
           </span>
 
+          {/* Vision describe status (image attachments only) */}
+          {file.isImage && (
+            file.describing ? (
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"
+                stroke="currentColor" strokeWidth="2"
+                className="flex-shrink-0 text-accent animate-spin">
+                <title>{t('input.describing')}</title>
+                <path d="M8 2a6 6 0 105.3 3.2" />
+              </svg>
+            ) : file.describeError ? (
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"
+                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                className="flex-shrink-0 text-red-500">
+                <title>{file.describeError}</title>
+                <path d="M8 1.5L14.5 13H1.5L8 1.5z" />
+                <path d="M8 6v3" />
+                <path d="M8 11v0.5" />
+              </svg>
+            ) : file.description ? (
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                className="flex-shrink-0 text-green-500">
+                <title>{t('input.described')}</title>
+                <path d="M3 8l3 3 7-7" />
+              </svg>
+            ) : null
+          )}
+
           {/* Remove button */}
           <button
             onClick={() => onRemove(file.id)}

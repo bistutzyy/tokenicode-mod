@@ -7,6 +7,8 @@ mod protocol;
 // non-Windows CI; it is only *invoked* from `#[cfg(target_os = "windows")]`
 // code paths.
 mod windows_ps;
+mod usage;
+mod vision;
 
 use crate::events::emit_to_frontend;
 use crate::path_access::{PathAccessManager, PathCapability};
@@ -2786,6 +2788,199 @@ fn load_tracked_sessions() -> std::collections::HashSet<String> {
     }
 
     set
+}
+
+// ================================================================
+// Profile usage stats — aggregate token usage from tracked CLI
+// session JSONL files (~/.claude/projects/) for the avatar-click
+// graphical stats modal. Only sessions in ~/.tokenicode/tracked_sessions.txt
+// (this app's sessions) are counted.
+// ================================================================
+
+#[derive(Default, serde::Serialize, Clone)]
+struct ProfileDailyStats {
+    date: String,
+    input_tokens: u64,
+    output_tokens: u64,
+    cache_tokens: u64,
+    total_tokens: u64,
+    message_count: u64,
+}
+
+#[derive(Default, serde::Serialize, Clone)]
+struct ProfileModelStats {
+    model: String,
+    total_tokens: u64,
+    message_count: u64,
+}
+
+fn usage_u64(usage: &Value, key: &str) -> u64 {
+    usage.get(key).and_then(|v| v.as_u64()).unwrap_or(0)
+}
+
+fn cache_creation_tokens(usage: &Value) -> u64 {
+    let top_level = usage_u64(usage, "cache_creation_input_tokens");
+    let nested = usage
+        .get("cache_creation")
+        .map(|v| usage_u64(v, "ephemeral_1h_input_tokens") + usage_u64(v, "ephemeral_5m_input_tokens"))
+        .unwrap_or(0);
+    top_level + nested
+}
+
+/// Aggregate all-time usage stats from tracked CLI sessions for the profile
+/// stats modal. Walks ~/.claude/projects/*/*.jsonl, filters to assistant
+/// messages with usage, buckets by day + model. Returns camelCase JSON
+/// matching the TS `ProfileStats` type.
+#[tauri::command]
+async fn get_profile_stats() -> Result<Value, String> {
+    use std::collections::{HashMap, HashSet};
+    use std::io::BufRead;
+
+    let home = dirs::home_dir().ok_or("Cannot find home dir")?;
+    let claude_dir = home.join(".claude").join("projects");
+    if !claude_dir.exists() {
+        return Ok(serde_json::json!({
+            "totalInputTokens": 0u64,
+            "totalOutputTokens": 0u64,
+            "totalCacheTokens": 0u64,
+            "totalTokens": 0u64,
+            "sessionCount": 0u64,
+            "messageCount": 0u64,
+            "activeDays": 0u64,
+            "peakDayTokens": 0u64,
+            "daily": [],
+            "models": [],
+        }));
+    }
+
+    let tracked = load_tracked_sessions();
+    let mut daily: HashMap<String, ProfileDailyStats> = HashMap::new();
+    let mut models: HashMap<String, ProfileModelStats> = HashMap::new();
+    let mut counted_sessions: HashSet<String> = HashSet::new();
+
+    let mut total_input = 0u64;
+    let mut total_output = 0u64;
+    let mut total_cache = 0u64;
+    let mut message_count = 0u64;
+
+    if let Ok(entries) = std::fs::read_dir(&claude_dir) {
+        for entry in entries.flatten() {
+            if !entry.path().is_dir() {
+                continue;
+            }
+            let Ok(files) = std::fs::read_dir(entry.path()) else {
+                continue;
+            };
+            for file in files.flatten() {
+                let path = file.path();
+                if !path.extension().map_or(false, |e| e == "jsonl") {
+                    continue;
+                }
+                let Some(name) = path.file_stem() else {
+                    continue;
+                };
+                let session_id = name.to_string_lossy().to_string();
+                if !tracked.contains(&session_id) {
+                    continue;
+                }
+                counted_sessions.insert(session_id.clone());
+
+                let Ok(file) = std::fs::File::open(&path) else {
+                    continue;
+                };
+                let reader = std::io::BufReader::new(file);
+                let mut seen_message_ids: HashSet<String> = HashSet::new();
+
+                for line in reader.lines().flatten() {
+                    let Ok(value) = serde_json::from_str::<Value>(&line) else {
+                        continue;
+                    };
+                    if value.get("type").and_then(|v| v.as_str()) != Some("assistant") {
+                        continue;
+                    }
+                    let Some(message) = value.get("message") else {
+                        continue;
+                    };
+                    let Some(usage) = message.get("usage") else {
+                        continue;
+                    };
+
+                    let message_key = message
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| value.get("uuid").and_then(|v| v.as_str()))
+                        .unwrap_or("");
+                    if !message_key.is_empty() && !seen_message_ids.insert(message_key.to_string()) {
+                        continue;
+                    }
+
+                    let input_tokens = usage_u64(usage, "input_tokens");
+                    let output_tokens = usage_u64(usage, "output_tokens");
+                    let cache_tokens =
+                        usage_u64(usage, "cache_read_input_tokens") + cache_creation_tokens(usage);
+                    let total_tokens = input_tokens + output_tokens + cache_tokens;
+                    if total_tokens == 0 {
+                        continue;
+                    }
+
+                    total_input += input_tokens;
+                    total_output += output_tokens;
+                    total_cache += cache_tokens;
+                    message_count += 1;
+
+                    let date = value
+                        .get("timestamp")
+                        .and_then(|v| v.as_str())
+                        .and_then(|s| s.get(0..10))
+                        .unwrap_or("unknown")
+                        .to_string();
+                    let entry = daily
+                        .entry(date.clone())
+                        .or_insert_with(|| ProfileDailyStats {
+                            date,
+                            ..Default::default()
+                        });
+                    entry.input_tokens += input_tokens;
+                    entry.output_tokens += output_tokens;
+                    entry.cache_tokens += cache_tokens;
+                    entry.total_tokens += total_tokens;
+                    entry.message_count += 1;
+
+                    if let Some(model) = message.get("model").and_then(|v| v.as_str()) {
+                        let model_entry = models
+                            .entry(model.to_string())
+                            .or_insert_with(|| ProfileModelStats {
+                                model: model.to_string(),
+                                ..Default::default()
+                            });
+                        model_entry.total_tokens += total_tokens;
+                        model_entry.message_count += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    let mut daily_values: Vec<ProfileDailyStats> = daily.into_values().collect();
+    daily_values.sort_by(|a, b| a.date.cmp(&b.date));
+    let peak_day_tokens = daily_values.iter().map(|d| d.total_tokens).max().unwrap_or(0);
+
+    let mut model_values: Vec<ProfileModelStats> = models.into_values().collect();
+    model_values.sort_by(|a, b| b.total_tokens.cmp(&a.total_tokens));
+    model_values.truncate(8);
+
+    Ok(serde_json::json!({
+        "totalInputTokens": total_input,
+        "totalOutputTokens": total_output,
+        "totalCacheTokens": total_cache,
+        "totalTokens": total_input + total_output + total_cache,
+        "sessionCount": counted_sessions.len() as u64,
+        "messageCount": message_count,
+        "activeDays": daily_values.iter().filter(|d| d.date != "unknown").count() as u64,
+        "peakDayTokens": peak_day_tokens,
+        "daily": daily_values,
+        "models": model_values,
+    }))
 }
 
 /// Register a CLI session ID as managed by TOKENICODE
@@ -8112,6 +8307,7 @@ pub fn run() {
             export_session_markdown,
             export_session_json,
             list_recent_projects,
+            get_profile_stats,
             watch_directory,
             unwatch_directory,
             save_temp_file,
@@ -8162,6 +8358,14 @@ pub fn run() {
             send_control_request,
             commands::feedback::submit_feedback,
             commands::feedback::feedback_is_configured,
+            // Vision pipeline (Qwen VL pre-description + balance + credentials)
+            vision::describe_image,
+            vision::query_qwen_balance,
+            vision::load_vision_credentials,
+            vision::save_vision_credentials,
+            // Usage logging (qwen-vl + cli-main sources)
+            usage::append_usage_log,
+            usage::read_usage_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

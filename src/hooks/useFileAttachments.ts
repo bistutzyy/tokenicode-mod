@@ -17,6 +17,12 @@ export interface FileAttachment {
   type: string;
   isImage: boolean;
   preview?: string;   // Base64 data URL for image thumbnails
+  /** Qwen VL textual pre-description (方式 B), injected into the CLI prompt. */
+  description?: string;
+  /** True while awaiting the Qwen VL describe response. */
+  describing?: boolean;
+  /** Non-empty when the VL describe call failed. */
+  describeError?: string;
 }
 
 // --- Helper ---
@@ -124,6 +130,60 @@ export function useFileAttachments() {
     }
   }, []);
 
+  /** Patch a single attachment by id (used by the vision describe flow). */
+  const updateAttachment = useCallback(
+    (tabId: string | null, id: string, patch: Partial<FileAttachment>) => {
+      const current = tabId
+        ? (useChatStore.getState().getTab(tabId)?.pendingAttachments ?? [])
+        : [];
+      setFilesForTab(tabId, current.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    },
+    [setFilesForTab],
+  );
+
+  /**
+   * Fire a Qwen VL pre-description for an image attachment (方式 B). Best-effort:
+   * silently skipped when vision is disabled or unconfigured; records qwen-vl
+   * usage on success. Fire-and-forget — caller does not await.
+   */
+  const describeImageAttachment = useCallback(
+    async (attachment: FileAttachment, ownerTabId?: string | null) => {
+      const tabId = ownerTabId ?? useSessionStore.getState().selectedSessionId;
+      updateAttachment(tabId, attachment.id, { describing: true, describeError: undefined });
+      try {
+        const creds = await bridge.loadVisionCredentials();
+        if (!creds.qwen?.enabled || !creds.qwen.apiKey.trim()) {
+          updateAttachment(tabId, attachment.id, { describing: false });
+          return;
+        }
+        const result = await bridge.describeImage(
+          attachment.path,
+          creds.qwen.apiKey.trim(),
+          creds.qwen.vlModel || undefined,
+        );
+        updateAttachment(tabId, attachment.id, {
+          description: result.description,
+          describing: false,
+        });
+        bridge
+          .appendUsageLog({
+            ts: Date.now(),
+            source: 'qwen-vl',
+            inputTokens: result.inputTokens,
+            outputTokens: result.outputTokens,
+            model: result.model,
+            image: attachment.name,
+          })
+          .catch(() => {
+            /* usage log is best-effort */
+          });
+      } catch (e) {
+        updateAttachment(tabId, attachment.id, { describing: false, describeError: String(e) });
+      }
+    },
+    [updateAttachment],
+  );
+
   const addFiles = useCallback(async (fileList: FileList | File[], ownerTabId?: string | null) => {
     const targetTabId = ownerTabId ?? useSessionStore.getState().selectedSessionId;
     setIsProcessing(true);
@@ -164,11 +224,15 @@ export function useFileAttachments() {
           ? (useChatStore.getState().getTab(targetTabId)?.pendingAttachments ?? [])
           : files;
         setFilesForTab(targetTabId ?? null, [...existing, ...newFiles]);
+        // Vision pre-description (fire-and-forget) for image attachments
+        for (const f of newFiles) {
+          if (f.isImage) describeImageAttachment(f, targetTabId);
+        }
       }
     } finally {
       setIsProcessing(false);
     }
-  }, [files, setFilesForTab]);
+  }, [files, setFilesForTab, describeImageAttachment]);
 
   /** Add files by their OS file paths (for Tauri native drag-drop) */
   const addFilePaths = useCallback(async (paths: string[], ownerTabId?: string | null) => {
@@ -240,11 +304,15 @@ export function useFileAttachments() {
           ? (useChatStore.getState().getTab(targetTabId)?.pendingAttachments ?? [])
           : files;
         setFilesForTab(targetTabId ?? null, [...existing, ...newFiles]);
+        // Vision pre-description (fire-and-forget) for image attachments
+        for (const f of newFiles) {
+          if (f.isImage) describeImageAttachment(f, targetTabId);
+        }
       }
     } finally {
       setIsProcessing(false);
     }
-  }, [files, setFilesForTab]);
+  }, [files, setFilesForTab, describeImageAttachment]);
 
   // Listen for Tauri native drag-drop events (OS file drag into window)
   // Debounce guard: Tauri may fire onDragDropEvent multiple times per drop

@@ -16,6 +16,7 @@ import { useGroupStore } from '../../stores/groupStore';
 import { initGroupPersistence } from '../../stores/groupPersistence';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { teardownSession, waitForStdinCleared } from '../../lib/sessionLifecycle';
+import { newSessionInProject } from '../../lib/session-create';
 
 // --- Path utilities ---
 
@@ -514,17 +515,7 @@ export function ConversationList() {
       return raw.endsWith(suffix);
     });
     const realPath = match ? (match.project || match.projectDir) : resolveProjectPath(projectKey);
-    useSettingsStore.getState().setWorkingDirectory(realPath);
-    const currentTabId = useSessionStore.getState().selectedSessionId;
-    if (currentTabId) {
-      useChatStore.getState().saveToCache(currentTabId);
-      useAgentStore.getState().saveToCache(currentTabId);
-    }
-    const newDraftId = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    useChatStore.getState().ensureTab(newDraftId);
-    useChatStore.getState().resetTab(newDraftId);
-    useSessionStore.getState().addDraftSession(newDraftId, realPath);
-    return newDraftId;
+    return newSessionInProject(realPath);
   }, []);
 
   // New session that lands straight into a task group: create it in the group's

@@ -36,6 +36,8 @@ flate2 = "1"
 tar = "0.4"
 zip = "2"
 sha2 = "0.10"
+hmac = "0.12"
+sha1 = "0.10"
 tauri-plugin-mcp = { git = "https://github.com/P3GLEG/tauri-plugin-mcp" }
 
 [dev-dependencies]

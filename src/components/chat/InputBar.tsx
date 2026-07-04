@@ -821,10 +821,17 @@ export function InputBar() {
       }
     }
 
-    // Append file paths if there are attachments
+    // Append file paths if there are attachments. For images with a Qwen VL
+    // pre-description (方式 B), prepend the description so the vision-less main
+    // model receives the image content as text; the path is still included so a
+    // vision-capable model can re-read the raw image for verification.
     if (files.length > 0) {
-      const filePaths = files.map((f) => f.path).join('\n');
-      text = `${text}\n\n${t('input.attachedFiles')}\n${filePaths}`;
+      const fileLines = files.map((f) =>
+        f.isImage && f.description
+          ? `[${t('input.imageDescription')}: ${f.description}]\n${f.path}`
+          : f.path,
+      );
+      text = `${text}\n\n${t('input.attachedFiles')}\n${fileLines.join('\n')}`;
     }
 
     // Gate: queue follow-up messages while AI is actively processing (#142).

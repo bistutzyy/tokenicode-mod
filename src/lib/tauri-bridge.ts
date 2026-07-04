@@ -183,6 +183,100 @@ export interface ProvidersFile {
   }[];
 }
 
+// --- Vision pipeline (Qwen VL pre-description + balance + credentials) ---
+// Backend talks to DashScope directly — the browser can't (CORS + secret key).
+
+export interface QwenCreds {
+  apiKey: string;
+  vlModel: string;
+  enabled: boolean;
+}
+
+export interface VolcCreds {
+  ak: string;
+  sk: string;
+  enabled: boolean;
+}
+
+export interface VisionCredentials {
+  qwen: QwenCreds;
+  volc: VolcCreds;
+}
+
+export interface DescribeImageResult {
+  description: string;
+  inputTokens: number;
+  outputTokens: number;
+  model: string;
+}
+
+export interface BalanceResult {
+  /** null when the balance endpoint is unavailable or shape unrecognized. */
+  balance: number | null;
+  updateTime: number;
+  error: string | null;
+}
+
+// --- Usage logging (append-only JSONL at ~/.tokenicode/usage-log.jsonl) ---
+
+export interface UsageTotals {
+  qwenInputTokens: number;
+  qwenOutputTokens: number;
+  qwenCalls: number;
+  cliInputTokens: number;
+  cliOutputTokens: number;
+  cliCalls: number;
+  cliCost: number;
+}
+
+export interface ReadUsageResult {
+  entries: Record<string, unknown>[];
+  totals: UsageTotals;
+}
+
+/** One usage entry. `source` is 'qwen-vl' (vision pre-description) or 'cli-main' (main model turn). */
+export interface UsageLogEntry {
+  ts: number;
+  source: 'qwen-vl' | 'cli-main';
+  inputTokens: number;
+  outputTokens: number;
+  cost?: number;
+  model?: string;
+  provider?: string;
+  image?: string;
+  [key: string]: unknown;
+}
+
+// --- Profile usage stats (avatar-click modal; aggregated from CLI session JSONL) ---
+
+export interface ProfileDailyStats {
+  date: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_tokens: number;
+  total_tokens: number;
+  message_count: number;
+}
+
+export interface ProfileModelStats {
+  model: string;
+  total_tokens: number;
+  message_count: number;
+}
+
+export interface ProfileStats {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCacheTokens: number;
+  totalTokens: number;
+  sessionCount: number;
+  messageCount: number;
+  activeDays: number;
+  peakDayTokens: number;
+  daily: ProfileDailyStats[];
+  models: ProfileModelStats[];
+}
+
 export interface UnifiedCommand {
   name: string;
   description: string;
@@ -454,6 +548,34 @@ export const bridge = {
 
   testProviderConnection: (baseUrl: string, apiFormat: string, apiKey: string, model: string, proxyUrl?: string) =>
     invoke<ConnectionTestResult>('test_provider_connection', { baseUrl, apiFormat, apiKey, model, proxyUrl: proxyUrl || null }),
+
+
+  // --- Vision pipeline (Qwen VL pre-description + balance + credentials) ---
+
+  describeImage: (path: string, apiKey: string, model?: string, prompt?: string) =>
+    invoke<DescribeImageResult>('describe_image', { path, apiKey, model: model ?? null, prompt: prompt ?? null }),
+
+  queryQwenBalance: () =>
+    invoke<BalanceResult>('query_qwen_balance'),
+
+  loadVisionCredentials: () =>
+    invoke<VisionCredentials>('load_vision_credentials'),
+
+  saveVisionCredentials: (data: VisionCredentials) =>
+    invoke<void>('save_vision_credentials', { data }),
+
+  // --- Usage logging (append-only JSONL at ~/.tokenicode/usage-log.jsonl) ---
+
+  appendUsageLog: (entry: UsageLogEntry) =>
+    invoke<void>('append_usage_log', { entry }),
+
+  readUsageLog: (windowSec?: number) =>
+    invoke<ReadUsageResult>('read_usage_log', { windowSec: windowSec ?? null }),
+
+  // --- Profile usage stats (avatar-click modal) ---
+
+  getProfileStats: () =>
+    invoke<ProfileStats>('get_profile_stats'),
 
 
   // --- SDK Control Protocol ---
