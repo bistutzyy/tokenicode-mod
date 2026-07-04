@@ -1,265 +1,75 @@
 <div align="center">
 
-<img src="public/app-icon.png" alt="TOKENICODE Logo" width="120" />
+<img src="public/app-icon.png" alt="TOKENICODE Mod" width="120" />
 
 # TOKENICODE Mod
 
-### A Beautiful Desktop Client for Claude Code (forked mod)
+### Desktop client for Claude Code (personal fork mod)
 
-[![Version](https://img.shields.io/github/v/release/bistutzyy/tokenicode-mod?style=flat-square&color=blue)](https://github.com/bistutzyy/tokenicode-mod/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey?style=flat-square)](#installation)
+[![Release](https://img.shields.io/github/v/release/bistutzyy/tokenicode-mod?style=flat-square&color=blue)](https://github.com/bistutzyy/tokenicode-mod/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131?style=flat-square&logo=tauri&logoColor=white)](https://tauri.app)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 
-**TOKENICODE** wraps the powerful [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) in a polished desktop interface — bring your own API key, connect any provider, and get a native coding experience with file exploration, session management, and structured permission control.
-
-[**Download**](https://github.com/bistutzyy/tokenicode-mod/releases) · [**Features**](#features) · [**Screenshots**](#screenshots)
-
----
-
-**[English](README.md)** | **[中文](README_zh.md)**
+[**Download**](https://github.com/bistutzyy/tokenicode-mod/releases/latest) · **[中文](README_zh.md)**
 
 </div>
 
-## 📌 About This Mod
+## Attribution
 
-This is a **personal mod of TOKENICODE**, adding extra features on top of the original.
+This is a personal mod, built on top of:
 
-- **Original project**: [yiliqi78/TOKENICODE](https://github.com/yiliqi78/TOKENICODE) (Apache-2.0) — a beautiful desktop client for Claude Code
+- **Original project**: [yiliqi78/TOKENICODE](https://github.com/yiliqi78/TOKENICODE) (Apache-2.0) — a desktop GUI client for Claude Code
 - **Reference mod**: [mistydew/tokenicode-deepseek-alpha](https://github.com/mistydew/tokenicode-deepseek-alpha)
+  - The **avatar stats popup** (click avatar for usage heatmap / model distribution) is ported from that mod's `ProfileStatsModal` and adapted
+  - The **web preview panel** follows that mod's `PreviewPanel` / `previewStore` implementation
 
-### Mod features
-- 🖼️ **Qwen VL image pre-description**: when the main model has no vision, Qwen VL pre-describes images and injects text into the CLI prompt
-- 💰 **Qwen balance query**: avatar popup shows Aliyun account balance (BSS OpenAPI HMAC-SHA1 signing; needs your own RAM AK/SK)
-- 📊 **Avatar stats popup**: click avatar for local session usage heatmap + model distribution
-- 🌐 **Web preview panel**: URL bar + back/forward/refresh + snapshot capture
-- 📁 **Sidebar project list**: one-click switch + new conversation
-- 🔧 **UI tweaks**: removed feedback/usage tabs, renamed "魔改版", project click starts new conversation
+Thanks to both authors for open-sourcing their work.
 
-> ⚠️ No auto-update (updater removed). Download new versions manually from [Releases](https://github.com/bistutzyy/tokenicode-mod/releases).
->
-> ⚠️ Balance query requires configuring `~/.tokenicode/vision-credentials.json` (Aliyun RAM AK/SK). The repo contains no personal credentials.
+## Mod features
 
----
+| Feature | Notes |
+|---|---|
+| 🖼️ Qwen VL image pre-description | When the main model has no vision, Qwen VL pre-describes images and injects text into the CLI prompt |
+| 💰 Qwen balance query | Avatar popup shows Aliyun account balance (BSS OpenAPI HMAC-SHA1 signing; needs your own RAM AK/SK) |
+| 📊 Avatar stats popup | **Ported from mistydew's mod** — local session usage heatmap + model distribution |
+| 🌐 Web preview panel | **Follows mistydew's mod** — URL bar + back/forward/refresh + snapshot capture |
+| 📁 Sidebar project list | One-click switch + new conversation grouped under project |
+| 🔧 UI tweaks | Removed feedback/usage tabs, renamed "魔改版", project click starts new conversation |
+| ⚙️ Config | Removed updater (no signing key, no auto-update), changed identifier |
 
-## Why TOKENICODE?
+## Download & install
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| 🔑 **Bring Your Own API** | 🇨🇳 **China-Ready** | 🛡️ **SDK Control Protocol** | 🎨 **Beautiful & Native** |
-| 6 preset providers + custom endpoints. One-click config import/export. | Gitee mirror for updates, pre-configured Chinese API providers (DeepSeek, Zhipu GLM, Qwen, Kimi, MiniMax). | Structured permission approval — 4 work modes (code / ask / plan / bypass) with typed allow/deny over stdin. | Tauri 2 native desktop experience. Multiple themes × light/dark mode. |
+From [Releases](https://github.com/bistutzyy/tokenicode-mod/releases/latest):
 
-<div align="center">
-
-![Main Interface](screenshots/main-interface.png?v=2)
-
-</div>
-
-## Installation
+- `TOKENICODE-Mod_0.11.0_x64-setup.exe` — Windows NSIS installer (recommended)
+- `TOKENICODE-Mod_0.11.0_x64-portable.exe` — Windows portable (no install)
 
 ### Prerequisites
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) — auto-detected/installed/authenticated on first launch
+- WebView2 Runtime (built into Win11; Win10 needs [install](https://developer.microsoft.com/microsoft-edge/webview2/))
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) — TOKENICODE can auto-detect, install, and authenticate it for you on first launch
+### Won't launch?
+- **SmartScreen block**: "More info" → "Run anyway" (app is unsigned)
+- **Antivirus false positive**: whitelist (unsigned)
+- **Crash/blank**: try the portable build; ensure WebView2 installed; ensure Claude Code CLI works (`claude --version`)
+- Still stuck: [open an issue](https://github.com/bistutzyy/tokenicode-mod/issues) with symptoms
 
-### macOS
+## Vision / balance credentials
 
-Download the latest `.dmg` from [Releases](https://github.com/yiliqi78/TOKENICODE/releases), open it, and drag **TOKENICODE** to your Applications folder.
+Image description and balance query need your own credentials in `~/.tokenicode/vision-credentials.json`:
 
-Available for both Apple Silicon (arm64) and Intel (x86_64). The app is code-signed and notarized — no extra steps needed.
+```json
+{
+  "qwen": { "apiKey": "sk-...", "vlModel": "qwen-vl-max", "enabled": true },
+  "aliyun": { "accessKeyId": "LTAI...", "accessKeySecret": "...", "enabled": true }
+}
+```
 
-### Windows
+- **Qwen apiKey**: VL vision (DashScope)
+- **Aliyun RAM AK/SK**: balance query (BSS OpenAPI, needs `bss:QueryAccountBalance` permission)
 
-Download the latest `.msi` or `.exe` installer from [Releases](https://github.com/yiliqi78/TOKENICODE/releases) and run it. Requires Windows 10 or later.
-
-### Linux
-
-Download the `.AppImage`, `.deb`, or `.rpm` package from [Releases](https://github.com/yiliqi78/TOKENICODE/releases). Requires WebKit2GTK.
-
-> **China users:** If GitHub downloads are slow, grab releases from the [Gitee mirror](https://gitee.com/yiliqiseven/TOKENICODE/releases). The app also checks Gitee for updates when GitHub is unreachable.
-
-## Getting Started
-
-1. **Open TOKENICODE** — if the Claude Code CLI is not installed, the setup wizard guides you through installation and login, no terminal required
-2. **Select a project folder** from the welcome screen or input bar
-3. **Start chatting** — the Claude CLI session runs seamlessly in the background
-4. **Configure your API** (optional) — open Settings → API Provider to add third-party keys or import a config
-
-## Features
-
-### Third-Party API Providers
-
-Use Claude through any compatible API endpoint — not just Anthropic's official API.
-
-- **6 preset providers** in a visual 2×3 grid: Anthropic, DeepSeek, Zhipu GLM, Qwen Coder, Kimi k2, MiniMax
-- **Custom endpoints** with Anthropic or OpenAI-compatible format
-- **One-click JSON import** to share configs across machines
-- **Quick connection test** with response time display (e.g. `326ms`)
-- **Per-card export** for easy backup
-
-### China-Ready
-
-TOKENICODE is designed to work well behind the Great Firewall:
-
-- **Gitee update mirror** — when GitHub is unreachable, auto-update falls back to Gitee
-- **Chinese API presets** — DeepSeek, Zhipu GLM, Qwen Coder, Kimi k2, MiniMax are pre-configured with correct endpoints
-- **Proxy auto-detection** — inherits system proxy environment variables on macOS
-- **Full Chinese UI** — switch to Chinese from Settings at any time
-
-### SDK Control Protocol
-
-TOKENICODE v0.8.0 uses Claude CLI's native control protocol for permission handling:
-
-- Permission requests flow as structured JSON through stdout
-- Responses are typed `allow` / `deny` messages via stdin
-- Switch between **code**, **ask**, **plan**, and **bypass** modes at runtime
-- Change model on-the-fly without restarting the session
-
-### Streaming Chat
-
-Real-time conversation with Claude Code using NDJSON streaming. The UI shows distinct phases:
-
-- **Thinking** — spinner animation while Claude reasons
-- **Writing** — blue indicator as Claude composes its response
-- **Tool execution** — animated display of file edits, shell commands, and more
-
-### Session Management
-
-All Claude Code sessions are persisted and fully manageable:
-
-- **Pin** sessions to the top of each project group
-- **Archive** sessions to hide them from the default view
-- **Batch operations** — multi-select for bulk delete or archive
-- **Date separators** — Today / Yesterday / This Week / Earlier
-- **Smart collapse** — only the active project group auto-expands
-- **AI title generation** — automatic short title after the first reply
-- **Undo delete** — 5-second recovery window for accidental deletions
-- **Search** with a running-sessions-only filter
-- **Export** to Markdown or JSON, rename, resume any session
-
-### File Explorer & Editor
-
-Browse your project tree with full file management:
-
-- **SVG file icons** for 20+ file types with color coding
-- **Change markers** on files modified by Claude
-- **Create new files and folders** via right-click context menu
-- **Flat search** with relative path context
-- **Built-in CodeMirror editor** with syntax highlighting for 12+ languages (Python, TypeScript, Rust, Go, Java, C++, SQL, Markdown, JSON, YAML, HTML, CSS, XML)
-- **Double-click** to open in VS Code
-
-### Checkpoints & Rewind
-
-File restoration uses Claude CLI's native checkpoint system:
-
-- Restore **code**, **conversation**, or **both** independently
-- Powered by `--replay-user-messages` and CLI file checkpointing
-- Integrated restore button in the conversation timeline
-
-### Slash Commands & Command Palette
-
-- Full Claude Code slash command support with autocomplete popover
-- Shows built-in commands, project commands, and skills
-- **Command Palette** (`Cmd+K` / `Ctrl+K`) for quick access to new chats, panel toggles, theme switching, and settings
-
-### Agent Activity
-
-Monitor Claude's sub-agents in real-time — see which agents are spawning, thinking, running tools, or completed.
-
-### Skills & MCP
-
-Manage Claude Code skills (edit, enable/disable, right-click context menu) and MCP server connections directly from the UI.
-
-### Customization
-
-- **Themes** — multiple accent colors with light, dark, and system-following modes
-- **Languages** — full Chinese and English support, switchable from Settings
-- **Font size** — adjustable with keyboard shortcuts
-- **Thinking depth** — 5-level thinking depth control
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+K` | Open command palette |
-| `Cmd+N` | New chat |
-| `Cmd+B` | Toggle sidebar |
-| `Cmd+.` | Toggle file panel |
-| `Cmd+,` | Open settings |
-| `Cmd+Enter` | Send message |
-| `Cmd++` / `Cmd+-` | Adjust font size |
-| `Cmd+0` | Reset font size |
-| `Escape` | Close overlay / cancel |
-
-> On Windows/Linux, replace `Cmd` with `Ctrl`.
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Desktop framework | [Tauri 2](https://tauri.app) |
-| Frontend | [React 19](https://react.dev) + TypeScript 5.8 |
-| Styling | [Tailwind CSS 4](https://tailwindcss.com) |
-| State management | [Zustand 5](https://zustand.docs.pmnd.rs) (10 stores) |
-| Code editor | [CodeMirror 6](https://codemirror.net) |
-| Bundler | [Vite 7](https://vite.dev) |
-| Backend | Rust (tokio, reqwest, serde, notify) |
-| Package manager | pnpm |
-
-## Screenshots
-
-**Main Interface** — Three-panel layout with sidebar, chat, and file explorer
-![Main Interface](screenshots/main-interface.png?v=2)
-
-**Streaming Chat** — Real-time thinking, writing, and tool execution
-![Streaming Chat](screenshots/streaming-chat.png?v=2)
-
-**Session Management** — Pin, archive, date groups, batch operations
-![Session Management](screenshots/文件管理.png?v=2)
-
-**File Explorer** — SVG icons, change markers, flat search
-![File Explorer](screenshots/file-explorer.png?v=2)
-
-**File Editing** — Built-in CodeMirror editor with syntax highlighting
-![File Editing](screenshots/file-editing.png?v=2)
-
-**Plan Mode** — SDK permission approval cards
-![Plan Mode](screenshots/plan-mode.png?v=2)
-
-**Agent Activity** — Monitor sub-agent tasks in real-time
-![Agent Activity](screenshots/Agents.png?v=2)
-
-**Skills Management** — Right-click context menu for skills
-![Skills](screenshots/skills.png?v=2)
-
-**HTML Preview** — Live preview of HTML files
-![HTML Preview](screenshots/html-preview.png?v=2)
-
-**Settings** — Four-tab layout with theme preview cards
-![Settings](screenshots/settings.png?v=2)
-
-## Contributing
-
-Contributions are welcome! Please open an issue or pull request.
-
-- Fork the repo and create a feature branch: `git checkout -b feat/my-feature`
-- Commit with conventional format: `feat: add new feature`
-- Push and open a Pull Request
+> The repo contains no personal credentials.
 
 ## License
 
-This project is licensed under the **Apache License 2.0** — see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [Anthropic](https://anthropic.com) for Claude Code CLI
-- [Tauri](https://tauri.app) for the native desktop framework
-- [React](https://react.dev) and the open-source ecosystem
-
----
-
-<div align="center">
-
-**If you find TOKENICODE useful, please consider giving it a ⭐!**
-
-</div>
+[Apache License 2.0](LICENSE). Modified from yiliqi78/TOKENICODE; original license and copyright notice retained.
