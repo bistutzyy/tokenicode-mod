@@ -47,12 +47,13 @@
       "nsis": {
         "installMode": "currentUser"
       }
-    }
+    },
+    "createUpdaterArtifacts": true
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
-      "endpoints": []
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE1NjhENUQwQUQxQTk2MEEKUldRS2xocXQwTlY0cFErN1piWWErakFaOG03WFZIYjFtSmxmSVFCYWhEbVJGQk9Jc0c3bE1adnUK",
+      "endpoints": ["https://github.com/bistutzyy/tokenicode-mod/releases/latest/download/latest.json"]
     }
   }
 }
