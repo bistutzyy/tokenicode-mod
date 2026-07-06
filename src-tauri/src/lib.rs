@@ -1766,14 +1766,12 @@ async fn start_claude_session(
 
     // Extended thinking + effort level
     let thinking_level = params.thinking_level.as_deref().unwrap_or("high");
-    if thinking_level == "off" {
-        // Explicitly disable thinking — CLI defaults to enabled, so we must pass false
-        args.push("--settings".to_string());
-        args.push(r#"{"alwaysThinkingEnabled":false}"#.to_string());
-    } else {
-        args.push("--settings".to_string());
-        args.push(r#"{"alwaysThinkingEnabled":true}"#.to_string());
-    }
+    // NOTE: --settings is pushed later, AFTER provider env resolution, so the
+    // settings JSON can carry an `env` block that overrides ~/.claude/settings.json.
+    // The CLI applies settings.json's `env` block AFTER inheriting the child-process
+    // env, so cmd.env() alone is silently overridden (e.g. CC Switch routing the CLI
+    // to ark.cn-beijing.volces.com regardless of the selected provider). The
+    // --settings `env` block takes precedence over settings.json's `env` block.
 
     // Resolve claude binary — it may not be on the default PATH
     let claude_bin = find_claude_binary().unwrap_or_else(|| {
@@ -1941,6 +1939,41 @@ async fn start_claude_session(
             }
         }
     }
+
+    // Build --settings JSON. Provider env (ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY,
+    // extra_env, etc.) is passed via the settings `env` block because the CLI
+    // applies ~/.claude/settings.json's `env` block AFTER inheriting the child
+    // env — cmd.env() alone is silently overridden (e.g. CC Switch reroutes the
+    // CLI to ark.cn-beijing.volces.com). The --settings `env` block overrides
+    // settings.json's `env` block, restoring the user's selected provider.
+    // We also blank OAuth/model env keys that settings.json may set, so the CLI
+    // uses x-api-key auth + the --model flag instead of a stale Bearer token.
+    // cmd.env() is still applied below as a belt-and-suspenders fallback for
+    // env vars that the CLI reads before applying settings (e.g. MSYS_NO_PATHCONV).
+    let mut settings_env: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
+    for (k, v) in &resolved_env {
+        settings_env.insert(k.clone(), serde_json::Value::String(v.clone()));
+    }
+    for key in [
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+        "CLAUDE_CODE_ENTRYPOINT",
+    ] {
+        settings_env
+            .entry(key.to_string())
+            .or_insert_with(|| serde_json::Value::String(String::new()));
+    }
+    let settings_json = serde_json::json!({
+        "alwaysThinkingEnabled": thinking_level != "off",
+        "env": settings_env,
+    });
+    args.push("--settings".to_string());
+    args.push(settings_json.to_string());
 
     // On Windows, .cmd/.bat files must be launched via cmd /C
     #[cfg(target_os = "windows")]
